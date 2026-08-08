@@ -38,7 +38,7 @@
     gap: 9px;
     padding: 10px 12px;
     border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-lg);
     font-size: 13.5px;
     animation: rise 180ms var(--ease);
   }

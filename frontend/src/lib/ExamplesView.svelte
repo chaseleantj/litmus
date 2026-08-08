@@ -258,6 +258,10 @@
       </div>
     </div>
   {:else}
+    <div class="list-head" aria-hidden="true">
+      <span class="col-label ai">AI version</span>
+      <span class="col-label human">Your version</span>
+    </div>
     <ul class="pairs">
       {#each examples as ex (ex.id)}
         <li>
@@ -274,11 +278,11 @@
             <article class="card pair">
               <div class="pair-body" class:collapsed={!expanded.has(ex.id)}>
                 <div class="side">
-                  <span class="dot-label ai">AI</span>
+                  <span class="side-label dot-label ai">AI</span>
                   <p>{ex.ai}</p>
                 </div>
                 <div class="side">
-                  <span class="dot-label human">Human</span>
+                  <span class="side-label dot-label human">Human</span>
                   <p>{ex.human}</p>
                 </div>
               </div>
@@ -386,7 +390,7 @@
 
   .skeleton {
     height: 128px;
-    background: linear-gradient(90deg, var(--surface) 25%, var(--surface-muted) 50%, var(--surface) 75%);
+    background: linear-gradient(90deg, var(--surface) 25%, hsl(220 14% 95%) 50%, var(--surface) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.4s infinite;
   }
@@ -405,6 +409,48 @@
     gap: 8px;
     justify-content: center;
     flex-wrap: wrap;
+  }
+
+  /* Column headers for the whole list; card grids align because they share
+     the same horizontal padding and column gap. */
+  .list-head {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    padding: 0 19px;
+    margin-bottom: 8px;
+  }
+
+  .col-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-secondary);
+  }
+
+  .col-label::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .col-label.ai::before {
+    background: var(--ai);
+  }
+
+  .col-label.human::before {
+    background: var(--human);
+  }
+
+  /* Per-side chips are redundant next to the header row; they only come
+     back on mobile where the columns stack. */
+  .side-label {
+    display: none;
   }
 
   .pairs {
@@ -428,15 +474,23 @@
   .pair-body {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
   }
 
   .side {
     min-width: 0;
   }
 
+  .side:first-child {
+    padding-right: 20px;
+  }
+
+  .side:last-child {
+    padding-left: 20px;
+    border-left: 1px solid var(--border);
+  }
+
   .side p {
-    margin-top: 7px;
+    margin: 0;
     font-size: 13.5px;
     color: var(--ink);
     white-space: pre-wrap;
@@ -514,9 +568,27 @@
   }
 
   @media (max-width: 720px) {
+    .list-head {
+      display: none;
+    }
+
     .pair-body {
       grid-template-columns: 1fr;
       gap: 14px;
+    }
+
+    .side:first-child {
+      padding-right: 0;
+    }
+
+    .side:last-child {
+      padding-left: 0;
+      border-left: none;
+    }
+
+    .side-label {
+      display: inline-flex;
+      margin-bottom: 7px;
     }
   }
 </style>

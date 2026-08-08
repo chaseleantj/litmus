@@ -1,37 +1,42 @@
-/* ---------- Design tokens ---------- */
+/* ---------- Design tokens (Breeze) ---------- */
 :root {
-  /* Neutrals: warm-leaning stone, one family everywhere */
-  --bg: #faf9f7;
-  --surface: #ffffff;
-  --surface-muted: #f3f1ed;
-  --border: #e7e4de;
-  --border-strong: #d5d1c9;
-  --ink: #201d19;
-  --ink-hover: #3b362f;
-  --ink-secondary: #6f695f;
-  --ink-faint: #a7a196;
+  /* Cool slate neutrals, borders do the separating work */
+  --bg: hsl(220 14% 97%);
+  --surface: hsl(0 0% 100%);
+  --surface-muted: hsl(210 20% 98%);
+  --border: hsl(220 13% 91%);
+  --border-strong: hsl(220 13% 84%);
+  --ink: hsl(222 47% 11%);
+  --ink-2: hsl(217 19% 27%);
+  --ink-secondary: hsl(220 9% 46%);
+  --ink-faint: hsl(220 9% 46% / 0.72);
 
-  /* The only two hues on the page, reserved for meaning */
-  --ai: #31648c;
-  --ai-soft: #e9eff4;
-  --human: #b2632a;
-  --human-soft: #f6ede3;
+  /* Brand blue is reserved for state; the two semantic hues of this app */
+  --brand: hsl(217 91% 60%);
+  --brand-soft: hsl(214 95% 93%);
+  --ai: var(--brand);
+  --ai-soft: var(--brand-soft);
+  --human: #d97706;
+  --human-soft: rgb(250 236 220);
 
-  --danger: #b23a2f;
-  --danger-soft: #f9ebe9;
+  --danger: hsl(0 72% 51%);
+  --danger-text: hsl(0 72% 45%);
+  --danger-soft: hsl(0 72% 97%);
 
-  /* One shape rule: containers 12px, controls 8px, selection pills round */
+  /* Shape rule: big cards 12px, controls 8px, small controls 6px */
   --radius: 12px;
   --radius-sm: 8px;
+  --radius-xs: 6px;
 
-  --shadow-sm: 0 1px 2px rgba(32, 29, 25, 0.05);
-  --shadow-md: 0 4px 16px rgba(32, 29, 25, 0.08);
+  --shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
 
-  --font-sans: "Geist Sans", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-sans: "Manrope", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --speed: 150ms;
+  --ease: ease;
 
   color-scheme: light;
 }
@@ -48,9 +53,8 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.55;
-  letter-spacing: -0.006em;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -72,41 +76,34 @@ input {
   color: inherit;
 }
 
-/* ---------- Buttons ---------- */
+/* ---------- Buttons (flat, bordered — no shadows) ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  height: 34px;
+  gap: 6px;
+  height: 36px;
   padding: 0 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  color: var(--ink);
+  color: var(--ink-2);
   font-size: 13.5px;
   font-weight: 500;
-  letter-spacing: -0.005em;
   white-space: nowrap;
   transition:
     background var(--speed) var(--ease),
     border-color var(--speed) var(--ease),
-    color var(--speed) var(--ease),
-    transform 90ms var(--ease);
+    color var(--speed) var(--ease);
 }
 
 .btn:hover:not(:disabled) {
   background: var(--surface-muted);
-  border-color: var(--border-strong);
-}
-
-.btn:active:not(:disabled) {
-  transform: translateY(1px);
+  border-color: hsl(220 13% 91% / 0.7);
 }
 
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -117,26 +114,25 @@ input {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--ink-hover);
-  border-color: var(--ink-hover);
+  background: hsl(222 47% 11% / 0.9);
+  border-color: transparent;
 }
 
 .btn-danger {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: #fff;
+  background: var(--surface);
+  border-color: hsl(0 72% 45% / 0.3);
+  color: var(--danger-text);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #962e24;
-  border-color: #962e24;
+  background: var(--danger-soft);
+  border-color: hsl(0 72% 45% / 0.3);
 }
 
 .btn-ghost {
   border-color: transparent;
   background: transparent;
-  box-shadow: none;
-  color: var(--ink-secondary);
+  color: var(--ink-2);
 }
 
 .btn-ghost:hover:not(:disabled) {
@@ -148,7 +144,8 @@ input {
 .btn.small {
   height: 28px;
   padding: 0 10px;
-  font-size: 12.5px;
+  font-size: 12px;
+  border-radius: var(--radius-xs);
   gap: 5px;
 }
 
@@ -160,9 +157,9 @@ input {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   background: transparent;
-  color: var(--ink-secondary);
+  color: var(--ink-2);
   transition:
     background var(--speed) var(--ease),
     color var(--speed) var(--ease);
@@ -174,16 +171,15 @@ input {
 }
 
 .icon-btn:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .btn:focus-visible,
 .icon-btn:focus-visible,
-textarea:focus-visible,
 a:focus-visible,
 button:focus-visible {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 
@@ -193,7 +189,7 @@ textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  padding: 11px 13px;
+  padding: 10px 12px;
   line-height: 1.6;
   resize: vertical;
   transition:
@@ -202,17 +198,18 @@ textarea {
 }
 
 textarea::placeholder {
-  color: var(--ink-faint);
-}
-
-textarea:hover {
-  border-color: var(--border-strong);
+  color: var(--ink-secondary);
 }
 
 textarea:focus {
   outline: none;
-  border-color: var(--ink);
-  box-shadow: 0 0 0 3px rgba(32, 29, 25, 0.09);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px hsl(217 91% 60% / 0.2);
+}
+
+textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ---------- Surfaces & shared bits ---------- */
@@ -222,53 +219,60 @@ textarea:focus {
   border-radius: var(--radius);
 }
 
-/* Small colored-dot label (AI / Human) — replaces the old pill tags */
+/* Colored chip label (AI / Human): dot + soft tint, Breeze Chip recipe */
 .dot-label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ink-secondary);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+  color: var(--chip, var(--ink-2));
+  background: var(--chip-soft, var(--surface-muted));
+  border-color: color-mix(in srgb, var(--chip, var(--ink-2)) 15%, transparent);
 }
 
 .dot-label::before {
   content: "";
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--dot, var(--ink-faint));
+  background: currentColor;
 }
 
 .dot-label.ai {
-  --dot: var(--ai);
+  --chip: hsl(217 91% 50%);
+  --chip-soft: var(--ai-soft);
 }
 
 .dot-label.human {
-  --dot: var(--human);
+  --chip: var(--human);
+  --chip-soft: var(--human-soft);
 }
 
-/* Empty / error panels share one look */
+/* Empty / error panels share one look (Breeze EmptyState) */
 .panel-note {
   text-align: center;
-  padding: 56px 24px;
+  padding: 48px 32px;
   color: var(--ink-secondary);
 }
 
 .panel-note h3 {
-  font-size: 15.5px;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: -0.01em;
   color: var(--ink);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .panel-note p {
   max-width: 44ch;
   margin: 0 auto 18px;
-  font-size: 13.5px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .spinner {
@@ -284,6 +288,11 @@ textarea:focus {
 .spinner-dark {
   border-color: var(--border-strong);
   border-top-color: var(--ink-secondary);
+}
+
+.btn-danger .spinner {
+  border-color: hsl(0 72% 45% / 0.3);
+  border-top-color: var(--danger-text);
 }
 
 @keyframes spin {

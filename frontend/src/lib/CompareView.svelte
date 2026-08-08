@@ -324,9 +324,11 @@
   }
 
   .field-head label {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: -0.005em;
+    font-size: 11.5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-secondary);
   }
 
   .words {
@@ -407,7 +409,7 @@
     height: 17px;
     background: var(--ink-secondary);
     border: 2.5px solid var(--surface);
-    box-shadow: 0 1px 4px rgba(32, 29, 25, 0.3);
+    box-shadow: 0 1px 4px hsl(222 47% 11% / 0.3);
     transition:
       left 420ms var(--ease),
       background 200ms var(--ease);
@@ -493,15 +495,15 @@
     gap: 2px;
     background: var(--surface-muted);
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
   }
 
   .seg-mini button {
     appearance: none;
     border: none;
     background: none;
-    border-radius: 999px;
-    padding: 3px 10px;
+    border-radius: var(--radius-xs);
+    padding: 2px 10px;
     font-size: 12px;
     font-weight: 500;
     color: var(--ink-secondary);
@@ -511,9 +513,8 @@
   }
 
   .seg-mini button.active {
-    background: var(--surface);
-    color: var(--ink);
-    box-shadow: var(--shadow-sm);
+    background: color-mix(in srgb, var(--brand-soft) 60%, transparent);
+    color: hsl(217 91% 45%);
   }
 
   .seg-mini button:focus-visible {
@@ -555,7 +556,7 @@
     height: 10px;
     border-radius: 999px;
     margin-top: 24px;
-    background: var(--surface-muted);
+    background: hsl(220 14% 93%);
   }
 
   @media (prefers-reduced-motion: no-preference) {

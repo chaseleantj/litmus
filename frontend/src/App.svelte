@@ -27,28 +27,29 @@
 <div class="shell">
   <header>
     <div class="brand">
-      <span class="wordmark">Write like me</span>
+      <h1 class="wordmark">Write like me</h1>
       {#if $mockActive}
         <span class="mock-pill" role="status">Sample data — changes aren’t saved</span>
       {/if}
     </div>
-    <nav class="seg" aria-label="Views">
-      <button
-        class:active={tab === "examples"}
-        aria-current={tab === "examples" ? "page" : undefined}
-        onclick={() => goTo("examples")}
-      >
-        Examples
-      </button>
-      <button
-        class:active={tab === "compare"}
-        aria-current={tab === "compare" ? "page" : undefined}
-        onclick={() => goTo("compare")}
-      >
-        Compare
-      </button>
-    </nav>
   </header>
+
+  <nav class="tabs" aria-label="Views">
+    <button
+      class:active={tab === "examples"}
+      aria-current={tab === "examples" ? "page" : undefined}
+      onclick={() => goTo("examples")}
+    >
+      Examples
+    </button>
+    <button
+      class:active={tab === "compare"}
+      aria-current={tab === "compare" ? "page" : undefined}
+      onclick={() => goTo("compare")}
+    >
+      Compare
+    </button>
+  </nav>
 
   <main>
     {#if tab === "examples"}
@@ -70,78 +71,72 @@
 
   header {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
     gap: 16px;
-    padding: 16px 0;
-    border-bottom: 1px solid var(--border);
+    padding: 24px 0 8px;
   }
 
   .brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     min-width: 0;
   }
 
   .wordmark {
-    font-size: 14.5px;
+    font-size: 28px;
     font-weight: 600;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
   }
 
   .mock-pill {
-    font-size: 11.5px;
+    font-size: 12px;
     font-weight: 500;
-    color: #8a6d1f;
-    background: #fbf3e0;
-    border: 1px solid #eee0ba;
+    color: var(--human);
+    background: var(--human-soft);
+    border: 1px solid color-mix(in srgb, var(--human) 15%, transparent);
     border-radius: 999px;
-    padding: 3px 10px;
+    padding: 2px 8px;
     white-space: nowrap;
   }
 
-  .seg {
+  .tabs {
     display: flex;
-    padding: 3px;
-    gap: 2px;
-    background: var(--surface-muted);
-    border: 1px solid var(--border);
-    border-radius: 999px;
+    border-bottom: 1px solid var(--border);
   }
 
-  .seg button {
+  .tabs button {
     appearance: none;
     border: none;
     background: none;
-    border-radius: 999px;
-    padding: 5px 15px;
-    font-size: 13px;
+    margin-bottom: -1px;
+    padding: 8px 14px;
+    font-size: 13.5px;
     font-weight: 500;
-    letter-spacing: -0.005em;
     color: var(--ink-secondary);
+    border-bottom: 2px solid transparent;
     transition:
       color var(--speed) var(--ease),
-      background var(--speed) var(--ease),
-      box-shadow var(--speed) var(--ease);
+      border-color var(--speed) var(--ease);
   }
 
-  .seg button:hover:not(.active) {
+  .tabs button:hover:not(.active) {
+    color: var(--ink-2);
+  }
+
+  .tabs button.active {
     color: var(--ink);
+    border-bottom-color: var(--ink);
   }
 
-  .seg button.active {
-    background: var(--surface);
-    color: var(--ink);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .seg button:focus-visible {
-    outline-offset: 1px;
+  .tabs button:focus-visible {
+    outline-offset: -2px;
   }
 
   main {
-    margin-top: 28px;
+    margin-top: 24px;
   }
 
   @media (max-width: 560px) {
