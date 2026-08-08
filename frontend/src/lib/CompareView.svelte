@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ArrowsLeftRight, Check, Shuffle } from "phosphor-svelte";
   import { api, ApiError } from "./api";
   import { compareState as cs, persistDrafts } from "./compareState.svelte";
   import { toast } from "./toast";
@@ -184,119 +185,118 @@
 </script>
 
 <section aria-label="Compare texts">
-  <div class="intro">
-    <p class="lede">
-      Paste two pieces of writing and this will tell you which one sounds more like a person. It
-      compares them against each other, so it can't tell you much about one piece on its own.
-    </p>
-    <button class="btn" onclick={tryExample} disabled={loadingExample}>Try an example</button>
-  </div>
-
   <div class="inputs">
     <div class="field">
-      <label for="cmp-t1">First text <span class="role">stays put</span></label>
+      <div class="field-head">
+        <label for="cmp-t1">First text</label>
+        <span class="words">{w1 === 1 ? "1 word" : `${w1.toLocaleString()} words`}</span>
+      </div>
       <textarea
         id="cmp-t1"
         bind:value={cs.first}
         oninput={() => queueRun()}
         placeholder="Paste something here."
       ></textarea>
-      <div class="meta">{w1 === 1 ? "1 word" : `${w1.toLocaleString()} words`}</div>
     </div>
     <div class="field">
-      <label for="cmp-t2">Second text <span class="role">moves</span></label>
+      <div class="field-head">
+        <label for="cmp-t2">Second text</label>
+        <span class="words">{w2 === 1 ? "1 word" : `${w2.toLocaleString()} words`}</span>
+      </div>
       <textarea
         id="cmp-t2"
         bind:value={cs.second}
         oninput={() => queueRun()}
         placeholder="And something else here."
       ></textarea>
-      <div class="meta">{w2 === 1 ? "1 word" : `${w2.toLocaleString()} words`}</div>
     </div>
   </div>
 
-  <div class="hint-row">
-    <p class="hint">Fill both boxes and the score appears on its own.</p>
+  <div class="field-actions">
     <button
       class="btn btn-ghost small"
       onclick={swap}
       disabled={!cs.first.trim() && !cs.second.trim()}
     >
-      Swap texts
+      <ArrowsLeftRight size={14} />
+      Swap
+    </button>
+    <button class="btn btn-ghost small" onclick={tryExample} disabled={loadingExample}>
+      {#if loadingExample}<span class="spinner spinner-dark"></span>{:else}<Shuffle size={14} />{/if}
+      Try an example
     </button>
   </div>
 
-  <div class="result card" class:stale aria-live="polite">
+  <div class="result" class:stale aria-live="polite">
     {#if error}
-      <div class="note error-note" role="alert">
+      <div class="note" role="alert">
+        <p class="error-text">{error.message}</p>
         {#if error.status === 409}
-          <p>{error.message}</p>
-          <button class="btn" onclick={onGoExamples}>Add training examples</button>
+          <button class="btn btn-primary small" onclick={onGoExamples}>Add training examples</button>
         {:else}
-          <p>{error.message}</p>
-          <button class="btn" onclick={() => queueRun(true)}>Try again</button>
+          <button class="btn small" onclick={() => queueRun(true)}>Try again</button>
         {/if}
       </div>
     {:else if cs.result && chart && verdict}
       <p class="verdict">
         {#if verdict.kind === "identical"}
-          You have pasted the same text twice.
+          You pasted the same text twice.
         {:else if verdict.kind === "tie"}
           Too close to call.
         {:else}
-          The <span class="side-human-word">{verdict.which}</span> text sounds {verdict.strength} more
-          human.
+          The <span class="who">{verdict.which}</span> text sounds {verdict.strength} more human.
         {/if}
       </p>
       <div class="chart">
-        <div class="frame">
-          <div class="zones"></div>
-          <div class="marker m1" style="left: 50%"><div class="flag">First</div></div>
-          <div class="marker m2 {chart.side}" style="left: {chart.pos2}%">
-            <div class="flag">Second</div>
-          </div>
+        <div class="track">
+          <span class="pin first" style="left: 50%">
+            <span class="pin-label above">First</span>
+          </span>
+          <span class="pin second {chart.side}" style="left: {chart.pos2}%">
+            <span class="pin-label below">Second</span>
+          </span>
         </div>
-        <div class="ends">
-          <span class="left">&larr; sounds more like AI<br />than the first</span>
-          <span class="mid">anything in the middle<br />is hard to tell apart</span>
-          <span class="right">sounds more human<br />than the first &rarr;</span>
+        <div class="axis">
+          <span class="axis-ai">More like AI</span>
+          <span class="axis-human">More human</span>
         </div>
       </div>
       <div class="result-foot">
-        <span class="scores num">
+        <span class="scores">
           first {fmt(cs.result.first)} &middot; second {fmt(cs.result.second)} &middot; gap
           {cs.result.gap > 0 ? "+" : ""}{fmt(cs.result.gap)}
         </span>
         {#if verdict.kind !== "identical"}
-          <span class="save-pair">
-            {#if savedPair}
-              <span class="saved-note">Saved to training examples.</span>
-            {:else}
-              <span class="save-note">
-                Saves the <span class="side-human-word">{saveHuman}</span> text as the human version
-                &middot;
+          {#if savedPair}
+            <span class="saved-note"><Check size={14} weight="bold" /> Saved to examples</span>
+          {:else}
+            <span class="save">
+              <span class="save-label">Human:</span>
+              <span class="seg-mini" role="group" aria-label="Which text is the human version">
                 <button
-                  class="linkish"
-                  onclick={() => (saveHuman = saveHuman === "first" ? "second" : "first")}
+                  class:active={saveHuman === "first"}
+                  onclick={() => (saveHuman = "first")}>First</button
                 >
-                  switch
-                </button>
+                <button
+                  class:active={saveHuman === "second"}
+                  onclick={() => (saveHuman = "second")}>Second</button
+                >
               </span>
-              <button class="btn small" onclick={saveAsPair} disabled={savingPair}>
-                {#if savingPair}<span class="spinner spinner-dark"></span>{/if}
-                Add as training pair
+              <button class="btn btn-primary small" onclick={saveAsPair} disabled={savingPair}>
+                {#if savingPair}<span class="spinner"></span>{/if}
+                Save as pair
               </button>
-            {/if}
-          </span>
+            </span>
+          {/if}
         {/if}
       </div>
     {:else if comparing}
-      <div class="chart"><div class="skeleton"></div></div>
+      <div class="chart loading-chart"><div class="skeleton"></div></div>
     {:else}
       <div class="note">
         <p>
-          The first text stays in the middle. The second one slides right if it sounds more like a
-          person, and left if it sounds more like AI.
+          Paste two pieces of writing and the score appears on its own. The marker shows which one
+          sounds more human.
         </p>
       </div>
     {/if}
@@ -304,20 +304,6 @@
 </section>
 
 <style>
-  .intro {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 20px;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
-  }
-
-  .lede {
-    max-width: 62ch;
-    color: var(--ink-secondary);
-  }
-
   .inputs {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -327,50 +313,45 @@
   .field {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 7px;
   }
 
-  .field label {
+  .field-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .field-head label {
     font-size: 13px;
     font-weight: 600;
+    letter-spacing: -0.005em;
   }
 
-  .field label .role {
-    font-weight: 400;
-    color: var(--ink-faint);
-  }
-
-  .field textarea {
-    min-height: 190px;
-  }
-
-  .meta {
-    font-size: 12px;
+  .words {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
     color: var(--ink-faint);
     font-variant-numeric: tabular-nums;
   }
 
-  .hint-row {
+  .field textarea {
+    min-height: 184px;
+  }
+
+  .field-actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-top: 10px;
-  }
-
-  .hint {
-    font-size: 12.5px;
-    color: var(--ink-faint);
-  }
-
-  .small {
-    padding: 4px 10px;
-    font-size: 13px;
+    margin-top: 8px;
   }
 
   .result {
-    margin-top: 24px;
-    padding: 24px 24px 22px;
+    margin-top: 26px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
     transition: opacity 200ms var(--ease);
   }
 
@@ -379,181 +360,202 @@
   }
 
   .verdict {
-    font-size: 18px;
+    font-size: 19px;
     font-weight: 600;
-    letter-spacing: -0.012em;
+    letter-spacing: -0.015em;
   }
 
-  .side-human-word {
+  .who {
     color: var(--human);
   }
 
+  /* ---------- Chart ---------- */
   .chart {
-    margin-top: 38px;
+    margin-top: 8px;
+    padding: 30px 8px 0;
   }
 
-  .frame {
+  .track {
     position: relative;
-  }
-
-  .zones {
-    position: relative;
-    height: 46px;
-    border-radius: 6px;
-    overflow: hidden;
+    height: 10px;
+    border-radius: 999px;
     background: linear-gradient(
       to right,
       var(--ai-soft),
-      var(--zone-quiet) 44% 56%,
+      var(--surface-muted) 42% 58%,
       var(--human-soft)
     );
+    box-shadow: inset 0 0 0 1px var(--border);
   }
 
-  .marker {
+  .pin {
     position: absolute;
-    top: -14px;
-    bottom: -14px;
-    width: 2px;
-    transform: translateX(-1px);
-    background: var(--ink-secondary);
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
   }
 
-  .marker.m2 {
+  .pin.first {
+    width: 13px;
+    height: 13px;
+    background: var(--surface);
+    border: 2px solid var(--ink-secondary);
+  }
+
+  .pin.second {
+    width: 17px;
+    height: 17px;
+    background: var(--ink-secondary);
+    border: 2.5px solid var(--surface);
+    box-shadow: 0 1px 4px rgba(32, 29, 25, 0.3);
     transition:
       left 420ms var(--ease),
-      background-color 200ms var(--ease);
+      background 200ms var(--ease);
   }
 
-  .marker.m2.side-ai {
+  .pin.second.side-ai {
     background: var(--ai);
   }
 
-  .marker.m2.side-human {
+  .pin.second.side-human {
     background: var(--human);
   }
 
-  .flag {
+  .pin-label {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
     white-space: nowrap;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 5px;
-    color: #fff;
-    background: var(--ink-secondary);
-  }
-
-  .marker.m1 .flag {
-    bottom: calc(100% + 5px);
-  }
-
-  .marker.m2 .flag {
-    top: calc(100% + 5px);
-  }
-
-  .marker.m2.side-ai .flag {
-    background: var(--ai);
-  }
-
-  .marker.m2.side-human .flag {
-    background: var(--human);
-  }
-
-  /* Clearance below the bar for the Second flag, which hangs under it. */
-  .ends {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 16px;
-    margin-top: 48px;
-    font-size: 12px;
+    letter-spacing: 0.02em;
     color: var(--ink-secondary);
   }
 
-  .ends .left {
+  .pin-label.above {
+    bottom: calc(100% + 9px);
+  }
+
+  .pin-label.below {
+    top: calc(100% + 9px);
+  }
+
+  .axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 32px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .axis-ai {
     color: var(--ai);
   }
 
-  .ends .mid {
-    color: var(--ink-faint);
-    text-align: center;
-  }
-
-  .ends .right {
-    text-align: right;
+  .axis-human {
     color: var(--human);
   }
 
+  /* ---------- Result footer ---------- */
   .result-foot {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 14px;
     flex-wrap: wrap;
-    margin-top: 18px;
+    margin-top: 20px;
     padding-top: 14px;
     border-top: 1px solid var(--border);
   }
 
   .scores {
-    font-size: 12.5px;
-    color: var(--ink-faint);
-  }
-
-  .num {
     font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
     font-variant-numeric: tabular-nums;
   }
 
-  .save-pair {
+  .save {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    gap: 8px;
   }
 
-  .save-note,
-  .saved-note {
+  .save-label {
     font-size: 12.5px;
     color: var(--ink-faint);
   }
 
-  .linkish {
+  .seg-mini {
+    display: flex;
+    padding: 2px;
+    gap: 2px;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+  }
+
+  .seg-mini button {
     appearance: none;
     border: none;
     background: none;
-    padding: 0;
-    font-size: inherit;
-    color: var(--accent);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    cursor: pointer;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-secondary);
+    transition:
+      color var(--speed) var(--ease),
+      background var(--speed) var(--ease);
   }
 
-  .note,
-  .error-note {
-    padding: 30px 0 26px;
+  .seg-mini button.active {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .seg-mini button:focus-visible {
+    outline-offset: 1px;
+  }
+
+  .saved-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-secondary);
+  }
+
+  /* ---------- Notes & states ---------- */
+  .note {
+    padding: 26px 0 22px;
     text-align: center;
   }
 
-  .note p,
-  .error-note p {
+  .note p {
     margin: 0 auto;
-    max-width: 48ch;
+    max-width: 46ch;
     color: var(--ink-secondary);
-    font-size: 14px;
+    font-size: 13.5px;
   }
 
-  .error-note p {
-    color: var(--human);
+  .note .error-text {
+    color: var(--danger);
     margin-bottom: 14px;
   }
 
+  .loading-chart {
+    padding-top: 6px;
+  }
+
   .skeleton {
-    height: 46px;
-    border-radius: 6px;
-    background: var(--zone-quiet);
+    height: 10px;
+    border-radius: 999px;
+    margin-top: 24px;
+    background: var(--surface-muted);
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -564,23 +566,13 @@
 
   @keyframes pulse {
     50% {
-      opacity: 0.55;
+      opacity: 0.5;
     }
   }
 
   @media (max-width: 760px) {
     .inputs {
       grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 700px) {
-    .ends {
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .ends .mid {
-      display: none;
     }
   }
 </style>

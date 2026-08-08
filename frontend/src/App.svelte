@@ -26,21 +26,28 @@
 
 <div class="shell">
   <header>
-    <div class="masthead">
-      <h1>Write like me</h1>
-      <p class="tagline">Teach it your voice, then hear which text sounds more human.</p>
+    <div class="brand">
+      <span class="wordmark">Write like me</span>
+      {#if $mockActive}
+        <span class="mock-pill" role="status">Sample data — changes aren’t saved</span>
+      {/if}
     </div>
-    <nav aria-label="Views">
-      <button class:active={tab === "examples"} onclick={() => goTo("examples")}>
-        Training examples
+    <nav class="seg" aria-label="Views">
+      <button
+        class:active={tab === "examples"}
+        aria-current={tab === "examples" ? "page" : undefined}
+        onclick={() => goTo("examples")}
+      >
+        Examples
       </button>
-      <button class:active={tab === "compare"} onclick={() => goTo("compare")}>Compare</button>
+      <button
+        class:active={tab === "compare"}
+        aria-current={tab === "compare" ? "page" : undefined}
+        onclick={() => goTo("compare")}
+      >
+        Compare
+      </button>
     </nav>
-    {#if $mockActive}
-      <div class="mock-banner" role="status">
-        Backend unreachable — running on sample data. Changes are not saved.
-      </div>
-    {/if}
   </header>
 
   <main>
@@ -56,77 +63,94 @@
 
 <style>
   .shell {
-    max-width: 1060px;
+    max-width: 980px;
     margin: 0 auto;
-    padding: 28px 20px 64px;
+    padding: 0 24px 72px;
   }
 
-  .masthead h1 {
-    font-size: 23px;
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .wordmark {
+    font-size: 14.5px;
     font-weight: 600;
     letter-spacing: -0.015em;
   }
 
-  .tagline {
-    color: var(--ink-secondary);
-    margin-top: 2px;
+  .mock-pill {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: #8a6d1f;
+    background: #fbf3e0;
+    border: 1px solid #eee0ba;
+    border-radius: 999px;
+    padding: 3px 10px;
+    white-space: nowrap;
   }
 
-  nav {
+  .seg {
     display: flex;
-    gap: 4px;
-    margin-top: 20px;
-    border-bottom: 1px solid var(--border);
+    padding: 3px;
+    gap: 2px;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
   }
 
-  nav button {
+  .seg button {
     appearance: none;
     border: none;
     background: none;
-    padding: 9px 14px;
+    border-radius: 999px;
+    padding: 5px 15px;
+    font-size: 13px;
     font-weight: 500;
+    letter-spacing: -0.005em;
     color: var(--ink-secondary);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: color var(--speed) var(--ease);
+    transition:
+      color var(--speed) var(--ease),
+      background var(--speed) var(--ease),
+      box-shadow var(--speed) var(--ease);
   }
 
-  nav button:hover {
+  .seg button:hover:not(.active) {
     color: var(--ink);
   }
 
-  nav button.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
+  .seg button.active {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
   }
 
-  nav button:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: -2px;
-    border-radius: 4px;
-  }
-
-  .mock-banner {
-    margin-top: 12px;
-    padding: 8px 12px;
-    border-radius: var(--radius-sm);
-    background: #fdf3e0;
-    border: 1px solid #ecd9ad;
-    color: #7a5b17;
-    font-size: 13px;
+  .seg button:focus-visible {
+    outline-offset: 1px;
   }
 
   main {
-    margin-top: 24px;
+    margin-top: 28px;
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: 560px) {
     .shell {
-      padding: 20px 14px 48px;
+      padding: 0 16px 56px;
     }
 
-    .masthead h1 {
-      font-size: 20px;
+    .mock-pill {
+      display: none;
     }
   }
 </style>

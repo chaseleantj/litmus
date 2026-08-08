@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { DownloadSimple, PencilSimple, Plus, Trash, UploadSimple } from "phosphor-svelte";
   import { api } from "./api";
   import { loadPairIntoCompare } from "./compareState.svelte";
   import PairEditor from "./PairEditor.svelte";
@@ -185,7 +186,7 @@
       {:else if loadError}
         &nbsp;
       {:else}
-        {examples.length} training pair{examples.length === 1 ? "" : "s"}
+        {examples.length} pair{examples.length === 1 ? "" : "s"}
         {#if examples.length === 1}
           <span class="count-note">— add one more to enable comparison</span>
         {/if}
@@ -200,8 +201,8 @@
         onchange={onFilePicked}
       />
       <button class="btn" onclick={() => fileInput.click()} disabled={importing || loading}>
-        {#if importing}<span class="spinner spinner-dark"></span>{/if}
-        Import JSON
+        {#if importing}<span class="spinner spinner-dark"></span>{:else}<UploadSimple size={15} />{/if}
+        Import
       </button>
       <button
         class="btn"
@@ -209,10 +210,11 @@
         disabled={exporting || loading || examples.length === 0}
         title={examples.length === 0 && !loading ? "No pairs to export yet" : undefined}
       >
-        {#if exporting}<span class="spinner spinner-dark"></span>{/if}
-        Export JSON
+        {#if exporting}<span class="spinner spinner-dark"></span>{:else}<DownloadSimple size={15} />{/if}
+        Export
       </button>
       <button class="btn btn-primary" onclick={startAdd} disabled={adding || loading}>
+        <Plus size={15} weight="bold" />
         Add pair
       </button>
     </div>
@@ -239,7 +241,7 @@
     </div>
   {:else if loadError}
     <div class="card panel-note">
-      <h3>Couldn't load your examples</h3>
+      <h3>Couldn’t load your examples</h3>
       <p>{loadError}</p>
       <button class="btn btn-primary" onclick={load}>Try again</button>
     </div>
@@ -247,8 +249,8 @@
     <div class="card panel-note">
       <h3>No training pairs yet</h3>
       <p>
-        Each pair holds an AI-written version and your own version of the same content. From at
-        least two pairs, the detector learns what your voice sounds like.
+        Each pair holds an AI-written version and your own version of the same content. From two
+        pairs up, the detector learns what your voice sounds like.
       </p>
       <div class="empty-actions">
         <button class="btn btn-primary" onclick={startAdd}>Add your first pair</button>
@@ -272,19 +274,19 @@
             <article class="card pair">
               <div class="pair-body" class:collapsed={!expanded.has(ex.id)}>
                 <div class="side">
-                  <span class="tag tag-ai">AI version</span>
+                  <span class="dot-label ai">AI</span>
                   <p>{ex.ai}</p>
                 </div>
                 <div class="side">
-                  <span class="tag tag-human">Human version</span>
+                  <span class="dot-label human">Human</span>
                   <p>{ex.human}</p>
                 </div>
               </div>
               <footer>
-                <span class="meta" title={ex.created_at}>Added {formatDate(ex.created_at)}</span>
+                <span class="meta" title={ex.created_at}>{formatDate(ex.created_at)}</span>
                 {#if ex.ai.length > CLAMP_CHARS || ex.human.length > CLAMP_CHARS}
-                  <button class="btn btn-ghost small" onclick={() => toggleExpand(ex.id)}>
-                    {expanded.has(ex.id) ? "Show less" : "Show full text"}
+                  <button class="show-more" onclick={() => toggleExpand(ex.id)}>
+                    {expanded.has(ex.id) ? "Show less" : "Show more"}
                   </button>
                 {/if}
                 <span class="spacer"></span>
@@ -306,13 +308,27 @@
                     Cancel
                   </button>
                 {:else}
-                  <button class="btn btn-ghost small" onclick={() => tryInCompare(ex)}>
-                    Try in compare
-                  </button>
-                  <button class="btn btn-ghost small" onclick={() => startEdit(ex.id)}>Edit</button>
-                  <button class="btn btn-ghost small" onclick={() => (confirmDeleteId = ex.id)}>
-                    Delete
-                  </button>
+                  <div class="row-actions">
+                    <button class="btn btn-ghost small" onclick={() => tryInCompare(ex)}>
+                      Try in compare
+                    </button>
+                    <button
+                      class="icon-btn"
+                      aria-label="Edit pair"
+                      title="Edit"
+                      onclick={() => startEdit(ex.id)}
+                    >
+                      <PencilSimple size={15} />
+                    </button>
+                    <button
+                      class="icon-btn danger"
+                      aria-label="Delete pair"
+                      title="Delete"
+                      onclick={() => (confirmDeleteId = ex.id)}
+                    >
+                      <Trash size={15} />
+                    </button>
+                  </div>
                 {/if}
               </footer>
             </article>
@@ -320,11 +336,6 @@
         </li>
       {/each}
     </ul>
-    {#if examples.length >= 2}
-      <p class="next-step">
-        Ready to test? <button class="linkish" onclick={onGoCompare}>Compare two texts →</button>
-      </p>
-    {/if}
   {/if}
 </section>
 
@@ -335,10 +346,11 @@
     justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
   }
 
   .count {
+    font-size: 13.5px;
     color: var(--ink-secondary);
     font-weight: 500;
   }
@@ -373,12 +385,10 @@
   }
 
   .skeleton {
-    height: 132px;
+    height: 128px;
     background: linear-gradient(90deg, var(--surface) 25%, var(--surface-muted) 50%, var(--surface) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.4s infinite;
-    border-color: var(--border);
-    box-shadow: none;
   }
 
   @keyframes shimmer {
@@ -403,17 +413,22 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
 
   .pair {
-    padding: 16px 18px 10px;
+    padding: 15px 18px 9px;
+    transition: border-color var(--speed) var(--ease);
+  }
+
+  .pair:hover {
+    border-color: var(--border-strong);
   }
 
   .pair-body {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 18px;
+    gap: 20px;
   }
 
   .side {
@@ -421,7 +436,8 @@
   }
 
   .side p {
-    margin-top: 6px;
+    margin-top: 7px;
+    font-size: 13.5px;
     color: var(--ink);
     white-space: pre-wrap;
     overflow-wrap: break-word;
@@ -429,8 +445,8 @@
 
   .pair-body.collapsed .side p {
     display: -webkit-box;
-    -webkit-line-clamp: 5;
-    line-clamp: 5;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -438,58 +454,69 @@
   footer {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-top: 10px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border);
-    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+    min-height: 28px;
   }
 
   .meta {
-    font-size: 12.5px;
+    font-size: 12px;
     color: var(--ink-faint);
+  }
+
+  .show-more {
+    appearance: none;
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 12px;
+    color: var(--ink-faint);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .show-more:hover {
+    color: var(--ink);
   }
 
   .spacer {
     flex: 1;
   }
 
-  .small {
-    padding: 4px 10px;
-    font-size: 13px;
+  .row-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity var(--speed) var(--ease);
+  }
+
+  .pair:hover .row-actions,
+  .pair:focus-within .row-actions {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .row-actions {
+      opacity: 1;
+    }
+  }
+
+  .icon-btn.danger:hover:not(:disabled) {
+    background: var(--danger-soft);
+    color: var(--danger);
   }
 
   .confirm-label {
-    font-size: 13px;
+    font-size: 12.5px;
     color: var(--danger);
     font-weight: 500;
-  }
-
-  .next-step {
-    margin-top: 20px;
-    text-align: center;
-    color: var(--ink-secondary);
-  }
-
-  .linkish {
-    appearance: none;
-    border: none;
-    background: none;
-    padding: 0;
-    color: var(--accent);
-    font-weight: 500;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-
-  .linkish:hover {
-    color: var(--accent-hover);
   }
 
   @media (max-width: 720px) {
     .pair-body {
       grid-template-columns: 1fr;
-      gap: 12px;
+      gap: 14px;
     }
   }
 </style>

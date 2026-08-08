@@ -1,12 +1,20 @@
 <script lang="ts">
+  import { CheckCircle, WarningCircle, X } from "phosphor-svelte";
   import { dismissToast, toasts } from "./toast";
 </script>
 
 <div class="toasts" aria-live="polite">
   {#each $toasts as t (t.id)}
     <div class="toast {t.kind}">
+      {#if t.kind === "success"}
+        <CheckCircle size={16} weight="fill" />
+      {:else}
+        <WarningCircle size={16} weight="fill" />
+      {/if}
       <span>{t.message}</span>
-      <button aria-label="Dismiss notification" onclick={() => dismissToast(t.id)}>×</button>
+      <button aria-label="Dismiss notification" onclick={() => dismissToast(t.id)}>
+        <X size={13} weight="bold" />
+      </button>
     </div>
   {/each}
 </div>
@@ -21,19 +29,23 @@
     flex-direction: column;
     gap: 8px;
     z-index: 100;
-    width: min(420px, calc(100vw - 32px));
+    width: min(400px, calc(100vw - 32px));
   }
 
   .toast {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 14px;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 12px;
     border-radius: var(--radius-sm);
-    box-shadow: var(--shadow);
-    font-size: 14px;
+    box-shadow: var(--shadow-md);
+    font-size: 13.5px;
     animation: rise 180ms var(--ease);
+  }
+
+  .toast > span {
+    flex: 1;
+    min-width: 0;
   }
 
   .toast.success {
@@ -51,14 +63,18 @@
     border: none;
     background: none;
     color: inherit;
-    opacity: 0.7;
-    font-size: 16px;
-    line-height: 1;
-    padding: 2px;
+    opacity: 0.65;
+    padding: 3px;
+    display: inline-flex;
+    border-radius: 5px;
   }
 
   .toast button:hover {
     opacity: 1;
+  }
+
+  .toast button:focus-visible {
+    outline-color: #fff;
   }
 
   @keyframes rise {

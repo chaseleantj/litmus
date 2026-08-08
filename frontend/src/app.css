@@ -1,35 +1,39 @@
 /* ---------- Design tokens ---------- */
 :root {
-  --bg: #fbfaf8;
+  /* Neutrals: warm-leaning stone, one family everywhere */
+  --bg: #faf9f7;
   --surface: #ffffff;
-  --surface-muted: #f0eeea;
-  --border: #e2dfd9;
-  --border-strong: #c6c2ba;
-  --ink: #211f1c;
-  --ink-secondary: #635f58;
-  --ink-faint: #8d8880;
+  --surface-muted: #f3f1ed;
+  --border: #e7e4de;
+  --border-strong: #d5d1c9;
+  --ink: #201d19;
+  --ink-hover: #3b362f;
+  --ink-secondary: #6f695f;
+  --ink-faint: #a7a196;
 
-  --accent: #1f5f8b;
-  --accent-hover: #17496c;
-  --accent-soft: #e3edf4;
-
-  --ai: #1f5f8b;
-  --ai-soft: #e3edf4;
-  --human: #b0561f;
-  --human-soft: #f6e8dc;
-  --zone-quiet: #f0eeea;
+  /* The only two hues on the page, reserved for meaning */
+  --ai: #31648c;
+  --ai-soft: #e9eff4;
+  --human: #b2632a;
+  --human-soft: #f6ede3;
 
   --danger: #b23a2f;
   --danger-soft: #f9ebe9;
 
-  --radius: 10px;
-  --radius-sm: 6px;
-  --shadow: 0 1px 2px rgba(33, 31, 28, 0.05);
-  --font-serif: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
-  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  /* One shape rule: containers 12px, controls 8px, selection pills round */
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  --shadow-sm: 0 1px 2px rgba(32, 29, 25, 0.05);
+  --shadow-md: 0 4px 16px rgba(32, 29, 25, 0.08);
+
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --speed: 160ms;
+  --speed: 150ms;
+
+  color-scheme: light;
 }
 
 /* ---------- Reset & base ---------- */
@@ -44,8 +48,9 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 14.5px;
   line-height: 1.55;
+  letter-spacing: -0.006em;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -67,41 +72,53 @@ input {
   color: inherit;
 }
 
-/* ---------- Shared components ---------- */
+/* ---------- Buttons ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
   color: var(--ink);
+  font-size: 13.5px;
   font-weight: 500;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
   transition:
     background var(--speed) var(--ease),
     border-color var(--speed) var(--ease),
-    color var(--speed) var(--ease);
+    color var(--speed) var(--ease),
+    transform 90ms var(--ease);
 }
 
 .btn:hover:not(:disabled) {
   background: var(--surface-muted);
+  border-color: var(--border-strong);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--ink);
+  border-color: var(--ink);
   color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--ink-hover);
+  border-color: var(--ink-hover);
 }
 
 .btn-danger {
@@ -111,94 +128,152 @@ input {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #93291f;
-  border-color: #93291f;
+  background: #962e24;
+  border-color: #962e24;
 }
 
 .btn-ghost {
   border-color: transparent;
   background: transparent;
+  box-shadow: none;
   color: var(--ink-secondary);
 }
 
 .btn-ghost:hover:not(:disabled) {
   background: var(--surface-muted);
+  border-color: transparent;
   color: var(--ink);
 }
 
+.btn.small {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12.5px;
+  gap: 5px;
+}
+
+/* Square icon-only ghost button for row actions */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-secondary);
+  transition:
+    background var(--speed) var(--ease),
+    color var(--speed) var(--ease);
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .btn:focus-visible,
+.icon-btn:focus-visible,
 textarea:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--accent);
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
+/* ---------- Inputs ---------- */
 textarea {
   width: 100%;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  padding: 10px 12px;
+  padding: 11px 13px;
+  line-height: 1.6;
   resize: vertical;
-  line-height: 1.55;
+  transition:
+    border-color var(--speed) var(--ease),
+    box-shadow var(--speed) var(--ease);
+}
+
+textarea::placeholder {
+  color: var(--ink-faint);
+}
+
+textarea:hover {
+  border-color: var(--border-strong);
 }
 
 textarea:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(32, 29, 25, 0.09);
 }
 
-/* Version tags shared by list cards, editor, and compare labels */
-.tag {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.tag-ai {
-  background: var(--ai-soft);
-  color: var(--ai);
-}
-
-.tag-human {
-  background: var(--human-soft);
-  color: var(--human);
-}
-
+/* ---------- Surfaces & shared bits ---------- */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+}
+
+/* Small colored-dot label (AI / Human) — replaces the old pill tags */
+.dot-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+}
+
+.dot-label::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dot, var(--ink-faint));
+}
+
+.dot-label.ai {
+  --dot: var(--ai);
+}
+
+.dot-label.human {
+  --dot: var(--human);
 }
 
 /* Empty / error panels share one look */
 .panel-note {
   text-align: center;
-  padding: 48px 24px;
+  padding: 56px 24px;
   color: var(--ink-secondary);
 }
 
 .panel-note h3 {
-  font-family: var(--font-serif);
-  font-size: 20px;
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--ink);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .panel-note p {
-  max-width: 46ch;
-  margin: 0 auto 16px;
+  max-width: 44ch;
+  margin: 0 auto 18px;
+  font-size: 13.5px;
 }
 
 .spinner {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.35);
   border-top-color: #fff;
   border-radius: 50%;
@@ -208,7 +283,7 @@ textarea:focus {
 
 .spinner-dark {
   border-color: var(--border-strong);
-  border-top-color: var(--accent);
+  border-top-color: var(--ink-secondary);
 }
 
 @keyframes spin {

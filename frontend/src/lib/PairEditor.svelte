@@ -33,7 +33,7 @@
   <h3>{heading}</h3>
   <div class="fields">
     <label>
-      <span class="tag tag-ai">AI version</span>
+      <span class="dot-label ai">AI version</span>
       <textarea
         bind:value={ai}
         rows="7"
@@ -42,7 +42,7 @@
       ></textarea>
     </label>
     <label>
-      <span class="tag tag-human">Human version</span>
+      <span class="dot-label human">Human version</span>
       <textarea
         bind:value={human}
         rows="7"
@@ -72,12 +72,13 @@
 
 <style>
   .editor {
-    padding: 20px;
+    padding: 18px 20px 16px;
   }
 
   h3 {
-    font-family: var(--font-serif);
-    font-size: 18px;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     margin-bottom: 14px;
   }
 
@@ -91,7 +92,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 6px;
+    gap: 7px;
   }
 
   label textarea {
@@ -107,7 +108,7 @@
 
   .hint {
     margin-right: auto;
-    font-size: 13px;
+    font-size: 12.5px;
     color: var(--ink-faint);
   }
 
