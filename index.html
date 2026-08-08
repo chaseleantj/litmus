@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Human or AI</title>
+<style>
+  :root {
+    --bg: #fbfaf8;
+    --panel: #ffffff;
+    --line: #e2dfd9;
+    --line-strong: #c6c2ba;
+    --ink: #211f1c;
+    --ink-soft: #635f58;
+    --ink-faint: #8d8880;
+    --ai: #1f5f8b;
+    --human: #b0561f;
+    --ai-tint: #e3edf4;
+    --human-tint: #f6e8dc;
+    --zone-quiet: #f0eeea;
+    --radius: 10px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 44px 24px 80px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; }
+  .num { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+  header {
+    margin-bottom: 32px; display: flex; align-items: flex-start; gap: 20px;
+    justify-content: space-between; flex-wrap: wrap;
+  }
+  header button { flex-shrink: 0; margin-top: 2px; }
+  h1 { margin: 0 0 8px; font-size: 23px; font-weight: 600; letter-spacing: -0.015em; }
+  .lede { margin: 0; max-width: 62ch; color: var(--ink-soft); }
+
+  .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .inputs { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; font-weight: 600; }
+  .field label .role { font-weight: 400; color: var(--ink-faint); }
+  textarea {
+    min-height: 190px; resize: vertical; padding: 12px 13px;
+    background: var(--panel); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    font: inherit; line-height: 1.5;
+    transition: border-color 140ms var(--ease);
+  }
+  textarea::placeholder { color: var(--ink-faint); }
+  textarea:hover { border-color: var(--line-strong); }
+  textarea:focus-visible { outline: 2px solid var(--ai); outline-offset: -1px; border-color: var(--ai); }
+  .meta { font-size: 12px; color: var(--ink-faint); }
+
+  button {
+    font: inherit; font-weight: 550; cursor: pointer;
+    border-radius: var(--radius); border: 1px solid transparent; padding: 9px 18px;
+    transition: transform 90ms var(--ease), background-color 140ms var(--ease);
+  }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:focus-visible { outline: 2px solid var(--ai); outline-offset: 2px; }
+  .ghost { background: transparent; color: var(--ink-soft); border-color: var(--line); }
+  .ghost:hover { border-color: var(--line-strong); color: var(--ink); }
+  .hint { font-size: 12.5px; color: var(--ink-faint); margin: 16px 0 0; }
+
+  .result {
+    margin-top: 28px; padding: 24px 24px 22px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    transition: opacity 200ms var(--ease);
+  }
+  .result.stale { opacity: 0.45; }
+  .verdict { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.012em; }
+  .verdict .side-ai { color: var(--ai); }
+  .verdict .side-human { color: var(--human); }
+
+  .chart { margin-top: 38px; }
+  .frame { position: relative; }
+  .zones {
+    position: relative; height: 46px; border-radius: 6px; overflow: hidden;
+    background: linear-gradient(to right,
+      var(--ai-tint), var(--zone-quiet) 44% 56%, var(--human-tint));
+  }
+  .marker { position: absolute; top: -14px; bottom: -14px; width: 2px; transform: translateX(-1px); }
+  .marker.m1 { background: var(--ink-soft); }
+  .marker.m2 { background: var(--ink-soft); transition: left 420ms var(--ease), background-color 200ms var(--ease); }
+  .marker.m2.side-ai { background: var(--ai); }
+  .marker.m2.side-human { background: var(--human); }
+  .flag {
+    position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap;
+    font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 5px; color: #fff;
+    background: var(--ink-soft);
+  }
+  .marker.m1 .flag { bottom: calc(100% + 5px); }
+  .marker.m2 .flag { top: calc(100% + 5px); }
+  .marker.m2.side-ai .flag { background: var(--ai); }
+  .marker.m2.side-human .flag { background: var(--human); }
+
+  /* Clearance below the bar for the Second flag, which hangs under it. */
+  .ends {
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px;
+    margin-top: 48px; font-size: 12px; color: var(--ink-soft);
+  }
+  .ends .left { color: var(--ai); }
+  .ends .mid { color: var(--ink-faint); text-align: center; }
+  .ends .right { text-align: right; color: var(--human); }
+  @media (max-width: 700px) {
+    .ends { grid-template-columns: 1fr 1fr; }
+    .ends .mid { display: none; }
+  }
+
+  .empty, .error { padding: 30px 0 26px; text-align: center; }
+  .empty p, .error p { margin: 0 auto; max-width: 48ch; color: var(--ink-soft); font-size: 14px; }
+  .error p { color: var(--human); }
+  .skeleton { height: 46px; border-radius: 6px; background: var(--zone-quiet); }
+  @media (prefers-reduced-motion: no-preference) { .skeleton { animation: pulse 1.3s ease-in-out infinite; } }
+  @keyframes pulse { 50% { opacity: 0.55; } }
+  @media (prefers-reduced-motion: reduce) { .marker.m2, button, textarea, .result { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Human or AI</h1>
+      <p class="lede">
+        Paste two pieces of writing and this will tell you which one sounds more like a person.
+        It works by comparing them against each other, so it can't tell you much about one piece on its own.
+      </p>
+    </div>
+    <button id="example" class="ghost">Try an example</button>
+  </header>
+
+  <div class="inputs">
+    <div class="field">
+      <label for="t1">First text <span class="role">stays put</span></label>
+      <textarea id="t1" placeholder="Paste something here."></textarea>
+      <div class="meta" id="w1">0 words</div>
+    </div>
+    <div class="field">
+      <label for="t2">Second text <span class="role">moves</span></label>
+      <textarea id="t2" placeholder="And something else here."></textarea>
+      <div class="meta" id="w2">0 words</div>
+    </div>
+  </div>
+
+  <p class="hint" id="hint">Fill both boxes and the score appears on its own.</p>
+
+  <section class="result" id="result" aria-live="polite">
+    <div class="empty">
+      <p>The first text stays in the middle. The second one slides right if it sounds more like a human, and left if it sounds more like AI.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+const el = id => document.getElementById(id);
+const t1 = el("t1"), t2 = el("t2"), hint = el("hint"), result = el("result");
+const words = t => t.trim() ? t.trim().split(/\s+/).length : 0;
+
+function refresh() {
+  for (const [box, out] of [[t1, "w1"], [t2, "w2"]]) {
+    const n = words(box.value);
+    el(out).textContent = n === 1 ? "1 word" : n.toLocaleString() + " words";
+  }
+}
+
+// The first text sits at the centre. Everything is measured as distance from it,
+// positive to the right for more human sounding.
+function scale(distance, clear) {
+  const span = Math.max(0.3, Math.abs(distance) * 1.18, clear * 2.4);
+  return { span, pct: v => (0.5 + v / (2 * span)) * 100 };
+}
+
+function describe(distance, ref, identical) {
+  const size = Math.abs(distance);
+  if (identical) return "You have pasted the same text twice.";
+  if (size < ref.tooClose) return "Too close to call.";
+  const human = distance > 0 ? '<span class="side-human">second</span>' : '<span class="side-human">first</span>';
+  const strength = size >= ref.clear ? "clearly" : "a little";
+  return `The ${human} text sounds ${strength} more human.`;
+}
+
+function render(data) {
+  const distance = data.second.score - data.first.score;
+  const ref = data.reference;
+  const { pct } = scale(distance, ref.clear);
+  const v = describe(distance, ref, data.identical);
+  const flat = data.identical || Math.abs(distance) < ref.tooClose;
+  const pos2 = data.identical ? 50 : pct(distance);
+  const side = flat ? "" : (distance > 0 ? "side-human" : "side-ai");
+
+  result.innerHTML = `
+    <p class="verdict">${v}</p>
+    <div class="chart">
+      <div class="frame">
+        <div class="zones"></div>
+        <div class="marker m1" style="left:50%"><div class="flag">First</div></div>
+        <div class="marker m2 ${side}" style="left:${pos2}%"><div class="flag">Second</div></div>
+      </div>
+      <div class="ends">
+        <span class="left">&larr; sounds more like AI<br>than the first</span>
+        <span class="mid">anything in the middle<br>is hard to tell apart</span>
+        <span class="right">sounds more human<br>than the first &rarr;</span>
+      </div>
+    </div>`;
+}
+
+// Live scoring. Each keystroke resets a short timer; when the typing pauses the
+// texts go off for scoring. Anything still in flight gets cancelled first, and a
+// counter makes sure a slow old answer can never overwrite a newer one.
+const EMPTY_NOTE = `<div class="empty"><p>The first text stays in the middle. The second one slides
+  right if it sounds more like a person, and left if it sounds more like AI.</p></div>`;
+
+let timer = null;
+let inflight = null;
+let requestId = 0;
+let lastScored = null;
+
+function queueRun(immediate) {
+  clearTimeout(timer);
+  const a = t1.value, b = t2.value;
+  if (!a.trim() || !b.trim()) {
+    if (inflight) inflight.abort();
+    requestId++;
+    lastScored = null;
+    result.classList.remove("stale");
+    result.innerHTML = EMPTY_NOTE;
+    return;
+  }
+  if (lastScored && lastScored.a === a && lastScored.b === b) return;
+  result.classList.add("stale");
+  timer = setTimeout(run, immediate ? 0 : 600);
+}
+
+async function run() {
+  const a = t1.value, b = t2.value;
+  if (inflight) inflight.abort();
+  inflight = new AbortController();
+  const id = ++requestId;
+  if (!result.querySelector(".verdict")) {
+    result.innerHTML = '<div class="chart"><div class="skeleton"></div></div>';
+  }
+  try {
+    const res = await fetch("/compare", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ first: a, second: b }),
+      signal: inflight.signal,
+    });
+    const data = await res.json();
+    if (id !== requestId) return;
+    if (!res.ok) throw new Error(data.error || "That did not work. Try again.");
+    lastScored = { a, b };
+    render(data);
+    result.classList.remove("stale");
+  } catch (err) {
+    if (err.name === "AbortError" || id !== requestId) return;
+    result.innerHTML = `<div class="error"><p>${err.message}</p></div>`;
+    result.classList.remove("stale");
+  }
+}
+
+el("example").addEventListener("click", async () => {
+  const pairs = await (await fetch("/examples")).json();
+  const p = pairs[Math.floor(Math.random() * pairs.length)];
+  const flip = Math.random() < 0.5;
+  t1.value = flip ? p.ai : p.human;
+  t2.value = flip ? p.human : p.ai;
+  refresh();
+  queueRun(true);
+});
+
+for (const box of [t1, t2]) {
+  box.addEventListener("input", () => { refresh(); queueRun(false); });
+}
+refresh();
+t1.focus();
+</script>
+</body>
+</html>
