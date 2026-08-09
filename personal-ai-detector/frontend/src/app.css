@@ -33,7 +33,6 @@
     0 4px 6px -4px rgb(0 0 0 / 0.1);
 
   --font-sans: "Manrope", system-ui, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 
   --speed: 150ms;
   --ease: ease;
@@ -217,6 +216,18 @@ textarea:disabled {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+}
+
+/* The one small-label style: every caption, column header, axis label and
+   count on the page uses this, so pages carry exactly three text roles —
+   heading, body, micro. */
+.micro-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Colored chip label (AI / Human): dot + soft tint, Breeze Chip recipe */

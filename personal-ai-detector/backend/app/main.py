@@ -1,4 +1,4 @@
-"""AI text detector backend: examples CRUD + style comparison."""
+"""Personal AI Detector backend: examples CRUD + style comparison."""
 
 import json
 from contextlib import asynccontextmanager
@@ -36,7 +36,14 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="AI text detector", lifespan=lifespan)
+app = FastAPI(
+    title="Personal AI Detector",
+    description=(
+        "Trains a model to distinguish AI writing from your own, "
+        "then teaches a personal AI to write like you."
+    ),
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -95,6 +102,22 @@ class CompareOut(BaseModel):
     first: float
     second: float
     gap: float
+    summary: str
+
+
+class ScoreIn(BaseModel):
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def non_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("must be a non-empty text")
+        return v
+
+
+class ScoreOut(BaseModel):
+    score: float
     summary: str
 
 
@@ -191,6 +214,18 @@ def compare_texts(body: CompareIn, db: Session = Depends(get_db)):
         api_key = scoring.load_api_key()
         unit = get_direction(db, api_key)
         return scoring.compare(body.first, body.second, unit, api_key)
+    except scoring.EmbeddingError as exc:
+        raise HTTPException(502, detail=str(exc))
+
+
+@app.post("/api/score", response_model=ScoreOut)
+def score_text(body: ScoreIn, db: Session = Depends(get_db)):
+    if db.query(Example).count() < 2:
+        raise HTTPException(409, detail="Need at least 2 examples")
+    try:
+        api_key = scoring.load_api_key()
+        unit = get_direction(db, api_key)
+        return scoring.score_one(body.text, unit, api_key)
     except scoring.EmbeddingError as exc:
         raise HTTPException(502, detail=str(exc))
 

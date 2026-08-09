@@ -160,6 +160,33 @@ def test_direction_cache_reused_then_invalidated(client, fake_embed):
     assert fake_embed.calls == 7
 
 
+# --- Score (single text) -----------------------------------------------------
+
+
+def test_score_needs_two_examples(client, fake_embed):
+    clear_examples()
+    add(client)
+    r = client.post("/api/score", json={"text": "hello"})
+    assert r.status_code == 409
+    assert r.json() == {"detail": "Need at least 2 examples"}
+
+
+def test_score_validation(client, fake_embed):
+    r = client.post("/api/score", json={"text": "   "})
+    assert r.status_code == 422
+
+
+def test_score_returns_score_and_summary(client, fake_embed):
+    r = client.post("/api/score", json={"text": "hello there"})
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body) == {"score", "summary"}
+    assert isinstance(body["score"], float)
+    assert body["summary"]
+    # one call to learn the direction, one for the scored text
+    assert fake_embed.calls == 2
+
+
 def test_compare_provider_failure_is_502(client, monkeypatch):
     from app import scoring
 

@@ -1,6 +1,6 @@
 import { writable } from "svelte/store";
 import { ApiError } from "./errors";
-import type { CompareResult, Example, Health, ImportResult, PairInput } from "./types";
+import type { CompareResult, Example, Health, ImportResult, PairInput, ScoreResult } from "./types";
 
 export { ApiError };
 
@@ -79,4 +79,5 @@ export const api = {
   exportExamples: () => request<PairInput[]>("GET", "/api/examples/export"),
   compare: (first: string, second: string) =>
     request<CompareResult>("POST", "/api/compare", { first, second }),
+  score: (text: string) => request<ScoreResult>("POST", "/api/score", { text }),
 };

@@ -16,6 +16,11 @@ export interface ImportResult {
   total: number;
 }
 
+export interface ScoreResult {
+  score: number;
+  summary: string;
+}
+
 export interface CompareResult {
   first: number;
   second: number;

@@ -1,20 +1,20 @@
 <script lang="ts">
   import { mockActive } from "./lib/api";
-  import CompareView from "./lib/CompareView.svelte";
+  import DetectView from "./lib/DetectView.svelte";
   import ExamplesView from "./lib/ExamplesView.svelte";
   import Toasts from "./lib/Toasts.svelte";
 
-  type Tab = "examples" | "compare";
+  type Tab = "detect" | "examples";
 
   function tabFromHash(): Tab {
-    return location.hash === "#/compare" ? "compare" : "examples";
+    return location.hash === "#/examples" ? "examples" : "detect";
   }
 
   let tab = $state<Tab>(tabFromHash());
 
   function goTo(next: Tab) {
     tab = next;
-    history.replaceState(null, "", next === "compare" ? "#/compare" : "#/examples");
+    history.replaceState(null, "", next === "examples" ? "#/examples" : "#/detect");
   }
 
   $effect(() => {
@@ -27,7 +27,7 @@
 <div class="shell">
   <header>
     <div class="brand">
-      <h1 class="wordmark">Write like me</h1>
+      <h1 class="wordmark">Personal AI Detector</h1>
       {#if $mockActive}
         <span class="mock-pill" role="status">Sample data — changes aren’t saved</span>
       {/if}
@@ -36,26 +36,26 @@
 
   <nav class="tabs" aria-label="Views">
     <button
+      class:active={tab === "detect"}
+      aria-current={tab === "detect" ? "page" : undefined}
+      onclick={() => goTo("detect")}
+    >
+      Detect
+    </button>
+    <button
       class:active={tab === "examples"}
       aria-current={tab === "examples" ? "page" : undefined}
       onclick={() => goTo("examples")}
     >
       Examples
     </button>
-    <button
-      class:active={tab === "compare"}
-      aria-current={tab === "compare" ? "page" : undefined}
-      onclick={() => goTo("compare")}
-    >
-      Compare
-    </button>
   </nav>
 
   <main>
     {#if tab === "examples"}
-      <ExamplesView onGoCompare={() => goTo("compare")} />
+      <ExamplesView onGoDetect={() => goTo("detect")} />
     {:else}
-      <CompareView onGoExamples={() => goTo("examples")} />
+      <DetectView onGoExamples={() => goTo("examples")} />
     {/if}
   </main>
 </div>

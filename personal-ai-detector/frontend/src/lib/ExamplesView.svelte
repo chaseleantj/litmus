@@ -7,10 +7,10 @@
   import type { Example, PairInput } from "./types";
 
   interface Props {
-    onGoCompare: () => void;
+    onGoDetect: () => void;
   }
 
-  let { onGoCompare }: Props = $props();
+  let { onGoDetect }: Props = $props();
 
   let examples = $state<Example[]>([]);
   let loading = $state(true);
@@ -102,9 +102,9 @@
     }
   }
 
-  function tryInCompare(ex: Example) {
+  function tryInDetect(ex: Example) {
     loadPairIntoCompare(ex.ai, ex.human);
-    onGoCompare();
+    onGoDetect();
   }
 
   function toggleExpand(id: number) {
@@ -188,7 +188,7 @@
       {:else}
         {examples.length} pair{examples.length === 1 ? "" : "s"}
         {#if examples.length === 1}
-          <span class="count-note">— add one more to enable comparison</span>
+          <span class="count-note">— add one more to enable scoring</span>
         {/if}
       {/if}
     </p>
@@ -259,8 +259,8 @@
     </div>
   {:else}
     <div class="list-head" aria-hidden="true">
-      <span class="col-label ai">AI version</span>
-      <span class="col-label human">Your version</span>
+      <span class="micro-label col-label ai">AI version</span>
+      <span class="micro-label col-label human">Your version</span>
     </div>
     <ul class="pairs">
       {#each examples as ex (ex.id)}
@@ -313,8 +313,8 @@
                   </button>
                 {:else}
                   <div class="row-actions">
-                    <button class="btn btn-ghost small" onclick={() => tryInCompare(ex)}>
-                      Try in compare
+                    <button class="btn btn-ghost small" onclick={() => tryInDetect(ex)}>
+                      Try in detect
                     </button>
                     <button
                       class="icon-btn"
@@ -425,11 +425,6 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 11.5px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--ink-secondary);
   }
 
   .col-label::before {

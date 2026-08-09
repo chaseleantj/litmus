@@ -40,11 +40,12 @@ function detailError(status: number, detail: string): never {
   throw new ApiError(status, detail);
 }
 
-/** Deterministic pseudo "human-likeness" score in roughly 0.55–0.95. */
+/** Deterministic pseudo "human-likeness" score in roughly -0.2…+0.2, matching
+ * the real backend's signed, near-zero scale. */
 function score(text: string): number {
   let h = 0;
   for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
-  return 0.55 + (h % 4000) / 10000;
+  return (h % 4000) / 10000 - 0.2;
 }
 
 export async function handle(method: string, path: string, body: unknown): Promise<unknown> {
@@ -90,6 +91,18 @@ export async function handle(method: string, path: string, body: unknown): Promi
           ? `${who} sounds clearly more human.`
           : `${who} sounds slightly more human.`;
     return { first: a, second: b, gap, summary };
+  }
+
+  if (key === "POST /api/score") {
+    if (examples.length < 2) detailError(409, "Need at least 2 examples to score texts.");
+    await delay(1500); // emulate the embedding call
+    const { text } = body as { text: string };
+    const s = score(text);
+    const summary =
+      Math.abs(s) < 0.02
+        ? "Right on the line - hard to tell."
+        : `This text sounds ${Math.abs(s) >= 0.1 ? "clearly" : "slightly"} ${s > 0 ? "more human" : "more AI"}.`;
+    return { score: s, summary };
   }
 
   const putMatch = path.match(/^\/api\/examples\/(\d+)$/);

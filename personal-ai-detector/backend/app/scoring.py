@@ -100,6 +100,21 @@ def describe(gap: float, identical: bool) -> str:
     return f"The {more_ai} text sounds {strength} more AI than the {more_human} text."
 
 
+def describe_single(score: float) -> str:
+    size = abs(score)
+    if size < TOO_CLOSE:
+        return "Right on the line - hard to tell."
+    side = "more human" if score > 0 else "more AI"
+    strength = "clearly" if size >= CLEAR else "slightly"
+    return f"This text sounds {strength} {side}."
+
+
+def score_one(text: str, unit: list[float], api_key: str) -> dict:
+    (v,) = embed([text], api_key)
+    score = dot(v, unit)
+    return {"score": score, "summary": describe_single(score)}
+
+
 def compare(first: str, second: str, unit: list[float], api_key: str) -> dict:
     if first.strip() == second.strip():
         return {
