@@ -1,6 +1,6 @@
 .env
 __pycache__/
-*.cache.json
+.pytest_cache/
 node_modules/
 dist/
 data/
