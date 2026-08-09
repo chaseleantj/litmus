@@ -187,6 +187,24 @@ def test_score_returns_score_and_summary(client, fake_embed):
     assert fake_embed.calls == 2
 
 
+def test_scores_are_centered_on_the_class_midpoint(client, fake_embed):
+    """With midpoint centering, the mean score of the human training texts is
+    the exact negative of the mean score of the AI training texts."""
+    pairs = client.get("/api/examples").json()
+    human_scores = [
+        client.post("/api/score", json={"text": p["human"]}).json()["score"]
+        for p in pairs
+    ]
+    ai_scores = [
+        client.post("/api/score", json={"text": p["ai"]}).json()["score"]
+        for p in pairs
+    ]
+    mean_human = sum(human_scores) / len(human_scores)
+    mean_ai = sum(ai_scores) / len(ai_scores)
+    assert mean_human > 0 > mean_ai
+    assert abs(mean_human + mean_ai) < 1e-9
+
+
 def test_compare_provider_failure_is_502(client, monkeypatch):
     from app import scoring
 

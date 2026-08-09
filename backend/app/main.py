@@ -189,19 +189,19 @@ def export_examples(db: Session = Depends(get_db)):
 # --- Compare ---------------------------------------------------------------
 
 
-def get_direction(db: Session, api_key: str) -> list[float]:
-    """Learned unit direction, cached in the meta table and keyed by the
-    current example texts, so any change to examples causes a recompute."""
+def get_direction(db: Session, api_key: str) -> dict:
+    """Learned direction ({unit, bias}), cached in the meta table and keyed by
+    the current example texts, so any change to examples causes a recompute."""
     pairs = [(r.ai, r.human) for r in ordered_examples(db)]
     key = scoring.direction_key(pairs)
     cached = db.get(DirectionCache, key)
     if cached is not None:
         return json.loads(cached.unit_json)
-    unit = scoring.learn_direction(pairs, api_key)
+    direction = scoring.learn_direction(pairs, api_key)
     db.query(DirectionCache).delete()
-    db.add(DirectionCache(key=key, unit_json=json.dumps(unit)))
+    db.add(DirectionCache(key=key, unit_json=json.dumps(direction)))
     db.commit()
-    return unit
+    return direction
 
 
 @app.post("/api/compare", response_model=CompareOut)
@@ -209,11 +209,11 @@ def compare_texts(body: CompareIn, db: Session = Depends(get_db)):
     if db.query(Example).count() < 2:
         raise HTTPException(409, detail="Need at least 2 examples")
     if body.first.strip() == body.second.strip():
-        return scoring.compare(body.first, body.second, [], "")
+        return scoring.compare(body.first, body.second, None, "")
     try:
         api_key = scoring.load_api_key()
-        unit = get_direction(db, api_key)
-        return scoring.compare(body.first, body.second, unit, api_key)
+        direction = get_direction(db, api_key)
+        return scoring.compare(body.first, body.second, direction, api_key)
     except scoring.EmbeddingError as exc:
         raise HTTPException(502, detail=str(exc))
 
@@ -224,8 +224,8 @@ def score_text(body: ScoreIn, db: Session = Depends(get_db)):
         raise HTTPException(409, detail="Need at least 2 examples")
     try:
         api_key = scoring.load_api_key()
-        unit = get_direction(db, api_key)
-        return scoring.score_one(body.text, unit, api_key)
+        direction = get_direction(db, api_key)
+        return scoring.score_one(body.text, direction, api_key)
     except scoring.EmbeddingError as exc:
         raise HTTPException(502, detail=str(exc))
 

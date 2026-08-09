@@ -62,19 +62,28 @@ def dot(u: list[float], v: list[float]) -> float:
 
 
 def direction_key(examples: list[tuple[str, str]]) -> str:
-    """sha256 of the model plus a canonical serialization of all example texts."""
+    """sha256 of the scoring format, the model, and a canonical serialization
+    of all example texts. The format tag invalidates caches from before
+    midpoint centering."""
     canonical = json.dumps(
         [{"ai": ai, "human": human} for ai, human in examples],
         ensure_ascii=False,
         separators=(",", ":"),
     )
-    return hashlib.sha256((MODEL + "\n" + canonical).encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        ("centered-v2\n" + MODEL + "\n" + canonical).encode("utf-8")
+    ).hexdigest()
 
 
-def learn_direction(examples: list[tuple[str, str]], api_key: str) -> list[float]:
+def learn_direction(examples: list[tuple[str, str]], api_key: str) -> dict:
     """The direction that separates human texts from AI texts: the average step
     from an AI text to its human counterpart, scaled to unit length. Points
-    toward human, so a higher score means more human sounding."""
+    toward human, so a higher score means more human sounding.
+
+    Raw projections onto that direction share a large constant offset (all
+    embeddings live in a narrow cone), so scores are centered on the midpoint
+    between the two class centroids: bias = dot(midpoint, unit). Zero is then
+    the actual decision boundary."""
     texts = [t for ai, human in examples for t in (human, ai)]
     vectors = embed(texts, api_key)
     human = vectors[0::2]
@@ -85,7 +94,13 @@ def learn_direction(examples: list[tuple[str, str]], api_key: str) -> list[float
         sum(h[d] - a[d] for h, a in zip(human, ai)) / len(human) for d in range(dims)
     ]
     length = math.hypot(*direction)
-    return [x / length for x in direction]
+    unit = [x / length for x in direction]
+
+    midpoint = [
+        sum(h[d] + a[d] for h, a in zip(human, ai)) / (2 * len(human))
+        for d in range(dims)
+    ]
+    return {"unit": unit, "bias": dot(midpoint, unit)}
 
 
 def describe(gap: float, identical: bool) -> str:
@@ -109,13 +124,13 @@ def describe_single(score: float) -> str:
     return f"This text sounds {strength} {side}."
 
 
-def score_one(text: str, unit: list[float], api_key: str) -> dict:
+def score_one(text: str, direction: dict, api_key: str) -> dict:
     (v,) = embed([text], api_key)
-    score = dot(v, unit)
+    score = dot(v, direction["unit"]) - direction["bias"]
     return {"score": score, "summary": describe_single(score)}
 
 
-def compare(first: str, second: str, unit: list[float], api_key: str) -> dict:
+def compare(first: str, second: str, direction: dict | None, api_key: str) -> dict:
     if first.strip() == second.strip():
         return {
             "first": 0.0,
@@ -124,8 +139,8 @@ def compare(first: str, second: str, unit: list[float], api_key: str) -> dict:
             "summary": describe(0.0, identical=True),
         }
     u, v = embed([first, second], api_key)
-    score1 = dot(u, unit)
-    score2 = dot(v, unit)
+    score1 = dot(u, direction["unit"]) - direction["bias"]
+    score2 = dot(v, direction["unit"]) - direction["bias"]
     gap = score2 - score1
     return {
         "first": score1,
