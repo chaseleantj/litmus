@@ -53,13 +53,3 @@ export function persistDrafts(): void {
     /* quota / private mode: drafts just won't survive reload */
   }
 }
-
-/** Load a pair into the detect view (ai first so "more human" slides right). */
-export function loadPairIntoCompare(ai: string, human: string): void {
-  compareState.mode = "pair";
-  compareState.first = ai;
-  compareState.second = human;
-  compareState.result = null;
-  compareState.lastScored = null;
-  persistDrafts();
-}

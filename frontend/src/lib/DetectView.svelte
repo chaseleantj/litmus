@@ -196,8 +196,8 @@
     }
   }
 
-  // Arriving on the tab with unscored text (e.g. "Try in detect" from the
-  // examples list, or a restored draft after a reload): score immediately.
+  // Arriving on the tab with unscored text (a restored draft after a
+  // reload): score immediately.
   if (
     (cs.mode === "pair" ? cs.first.trim() && cs.second.trim() : cs.first.trim()) &&
     !upToDate()

@@ -53,7 +53,7 @@
 
   <main>
     {#if tab === "examples"}
-      <ExamplesView onGoDetect={() => goTo("detect")} />
+      <ExamplesView />
     {:else}
       <DetectView onGoExamples={() => goTo("examples")} />
     {/if}

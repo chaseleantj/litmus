@@ -1,16 +1,9 @@
 <script lang="ts">
   import { DownloadSimple, PencilSimple, Plus, Trash, UploadSimple } from "phosphor-svelte";
   import { api } from "./api";
-  import { loadPairIntoCompare } from "./compareState.svelte";
   import PairEditor from "./PairEditor.svelte";
   import { toast } from "./toast";
   import type { Example, PairInput } from "./types";
-
-  interface Props {
-    onGoDetect: () => void;
-  }
-
-  let { onGoDetect }: Props = $props();
 
   let examples = $state<Example[]>([]);
   let loading = $state(true);
@@ -100,11 +93,6 @@
       deletingId = null;
       confirmDeleteId = null;
     }
-  }
-
-  function tryInDetect(ex: Example) {
-    loadPairIntoCompare(ex.ai, ex.human);
-    onGoDetect();
   }
 
   function toggleExpand(id: number) {
@@ -313,9 +301,6 @@
                   </button>
                 {:else}
                   <div class="row-actions">
-                    <button class="btn btn-ghost small" onclick={() => tryInDetect(ex)}>
-                      Try in detect
-                    </button>
                     <button
                       class="icon-btn"
                       aria-label="Edit pair"
