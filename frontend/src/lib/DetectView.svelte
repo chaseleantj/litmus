@@ -102,10 +102,9 @@
     };
   });
 
-  // Live scoring: each keystroke resets a short timer; when typing pauses the
-  // text goes off for scoring. A counter makes sure a slow old answer can
-  // never overwrite a newer one.
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  // Typing only marks the result stale; scoring runs on Ctrl+Enter or a
+  // programmatic trigger (swap, try-example, restored draft). A counter makes
+  // sure a slow old answer can never overwrite a newer one.
   let requestId = 0;
 
   function clearResults() {
@@ -126,11 +125,29 @@
     return cs.lastScoredSingle === cs.first;
   }
 
-  function queueRun(immediate = false) {
-    clearTimeout(timer);
+  function ready(): boolean {
+    return !!(pair ? cs.first.trim() && cs.second.trim() : cs.first.trim());
+  }
+
+  function onInput() {
     persistDrafts();
-    const ready = pair ? cs.first.trim() && cs.second.trim() : cs.first.trim();
-    if (!ready) {
+    if (!ready()) {
+      clearResults();
+      return;
+    }
+    stale = !upToDate();
+  }
+
+  function onKeydown(e: KeyboardEvent) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      queueRun();
+    }
+  }
+
+  function queueRun() {
+    persistDrafts();
+    if (!ready()) {
       clearResults();
       return;
     }
@@ -139,7 +156,7 @@
       return;
     }
     stale = true;
-    timer = setTimeout(run, immediate ? 0 : 600);
+    run();
   }
 
   async function run() {
@@ -185,18 +202,16 @@
     (cs.mode === "pair" ? cs.first.trim() && cs.second.trim() : cs.first.trim()) &&
     !upToDate()
   ) {
-    queueRun(true);
+    queueRun();
   }
 
   function setMode(mode: "single" | "pair") {
-    clearTimeout(timer);
     cs.mode = mode;
     error = null;
-    queueRun(true);
+    queueRun();
   }
 
   function swap() {
-    clearTimeout(timer);
     const a = cs.first;
     cs.first = cs.second;
     cs.second = a;
@@ -212,7 +227,7 @@
       saveHuman = saveHuman === "first" ? "second" : "first";
     }
     persistDrafts();
-    queueRun(true);
+    queueRun();
   }
 
   async function tryExample() {
@@ -231,7 +246,7 @@
       } else {
         cs.first = flip ? p.ai : p.human;
       }
-      queueRun(true);
+      queueRun();
     } finally {
       loadingExample = false;
     }
@@ -264,7 +279,8 @@
       <textarea
         id="det-t1"
         bind:value={cs.first}
-        oninput={() => queueRun()}
+        oninput={onInput}
+        onkeydown={onKeydown}
         placeholder="Paste something here."
       ></textarea>
     </div>
@@ -285,7 +301,8 @@
         <textarea
           id="det-t2"
           bind:value={cs.second}
-          oninput={() => queueRun()}
+          oninput={onInput}
+          onkeydown={onKeydown}
           placeholder="And something else here."
         ></textarea>
       </div>
@@ -316,6 +333,12 @@
     </button>
   </div>
 
+  {#if stale && !scoring}
+    <p class="rescore-hint" aria-live="polite">
+      Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score
+    </p>
+  {/if}
+
   <div class="result" class:stale aria-live="polite">
     {#if error}
       <div class="note" role="alert">
@@ -323,7 +346,7 @@
         {#if error.status === 409}
           <button class="btn btn-primary small" onclick={onGoExamples}>Add training examples</button>
         {:else}
-          <button class="btn small" onclick={() => queueRun(true)}>Try again</button>
+          <button class="btn small" onclick={() => queueRun()}>Try again</button>
         {/if}
       </div>
     {:else if chart && verdict}
@@ -392,11 +415,11 @@
       <div class="note">
         <p>
           {#if pair}
-            Paste two pieces of writing and the score appears on its own. The markers show where
-            each one falls between AI and human.
+            Paste two pieces of writing and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score them.
+            The markers show where each one falls between AI and human.
           {:else}
-            Paste a piece of writing and the score appears on its own. The marker shows how human
-            it sounds.
+            Paste a piece of writing and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score it. The
+            marker shows how human it sounds.
           {/if}
         </p>
       </div>
@@ -455,6 +478,26 @@
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .rescore-hint {
+    margin: 14px 0 0;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+
+  kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ink-secondary);
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-xs);
   }
 
   .result {
