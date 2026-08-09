@@ -1,7 +1,8 @@
 """Personal AI Detector — build the frontend if stale, serve it, open the browser.
 
-    detector          # one process on http://127.0.0.1:8000
-    detector --dev    # vite dev server (HMR) on :5173 + backend on :8000
+    detector                # one process on http://127.0.0.1:8000, opens the browser
+    detector --no-browser   # same, but headless — for agents and scripts
+    detector --dev          # vite dev server (HMR) on :5173 + backend on :8000
 """
 
 import subprocess
@@ -62,14 +63,15 @@ def open_when_ready(url: str, health: str) -> None:
     print(f"Server did not come up in time; open {url} manually.")
 
 
-def run_prod() -> None:
+def run_prod(open_browser: bool) -> None:
     ensure_node_modules()
     if frontend_is_stale():
         build_frontend()
     url = f"http://127.0.0.1:{PORT}"
-    threading.Thread(
-        target=open_when_ready, args=(url, f"{url}/api/health"), daemon=True
-    ).start()
+    if open_browser:
+        threading.Thread(
+            target=open_when_ready, args=(url, f"{url}/api/health"), daemon=True
+        ).start()
     print(f"Serving on {url}  (Ctrl+C to stop)")
     subprocess.run(
         [sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(PORT)],
@@ -77,16 +79,17 @@ def run_prod() -> None:
     )
 
 
-def run_dev() -> None:
+def run_dev(open_browser: bool) -> None:
     ensure_node_modules()
     url = f"http://127.0.0.1:{DEV_PORT}"
     backend = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(PORT), "--reload"],
         cwd=APP_DIR / "backend",
     )
-    threading.Thread(
-        target=open_when_ready, args=(url, f"http://127.0.0.1:{PORT}/api/health"), daemon=True
-    ).start()
+    if open_browser:
+        threading.Thread(
+            target=open_when_ready, args=(url, f"http://127.0.0.1:{PORT}/api/health"), daemon=True
+        ).start()
     print(f"Dev server on {url}  (Ctrl+C to stop)")
     try:
         subprocess.run([NPM, "run", "dev"], cwd=FRONTEND)
@@ -95,7 +98,8 @@ def run_dev() -> None:
 
 
 if __name__ == "__main__":
+    open_browser = "--no-browser" not in sys.argv
     try:
-        run_dev() if "--dev" in sys.argv else run_prod()
+        run_dev(open_browser) if "--dev" in sys.argv else run_prod(open_browser)
     except KeyboardInterrupt:
         pass
