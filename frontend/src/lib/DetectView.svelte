@@ -25,11 +25,6 @@
   const TOO_CLOSE = 0.02;
   const CLEAR = 0.1;
 
-  const words = (t: string) => (t.trim() ? t.trim().split(/\s+/).length : 0);
-  const w1 = $derived(words(cs.first));
-  const w2 = $derived(words(cs.second));
-  const wordLabel = (n: number) => (n === 1 ? "1 word" : `${n.toLocaleString()} words`);
-
   const pair = $derived(cs.mode === "pair");
   const identical = $derived(
     pair && cs.first.trim().length > 0 && cs.first.trim() === cs.second.trim(),
@@ -103,8 +98,8 @@
   });
 
   // Typing only marks the result stale; scoring runs on Ctrl+Enter or a
-  // programmatic trigger (swap, try-example, restored draft). A counter makes
-  // sure a slow old answer can never overwrite a newer one.
+  // programmatic trigger (swap, mode toggle, try-example, restored draft).
+  // A counter makes sure a slow old answer can never overwrite a newer one.
   let requestId = 0;
 
   function clearResults() {
@@ -136,13 +131,6 @@
       return;
     }
     stale = !upToDate();
-  }
-
-  function onKeydown(e: KeyboardEvent) {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      e.preventDefault();
-      queueRun();
-    }
   }
 
   function queueRun() {
@@ -212,6 +200,7 @@
   }
 
   function swap() {
+    if (!pair || (!cs.first.trim() && !cs.second.trim())) return;
     const a = cs.first;
     cs.first = cs.second;
     cs.second = a;
@@ -229,6 +218,31 @@
     persistDrafts();
     queueRun();
   }
+
+  function toggleMode() {
+    setMode(pair ? "single" : "pair");
+  }
+
+  // Score, toggle compare, and swap — available anywhere on this tab.
+  $effect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        queueRun();
+        return;
+      }
+      // Backslash (code, not key) so Shift+\ still matches on layouts where
+      // the shifted glyph is "|".
+      if (e.code === "Backslash") {
+        e.preventDefault();
+        if (e.shiftKey) swap();
+        else toggleMode();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   async function tryExample() {
     loadingExample = true;
@@ -274,13 +288,11 @@
     <div class="field">
       <div class="field-head">
         <label class="micro-label" for="det-t1">{pair ? "First text" : "Text"}</label>
-        <span class="micro-label words">{wordLabel(w1)}</span>
       </div>
       <textarea
         id="det-t1"
         bind:value={cs.first}
         oninput={onInput}
-        onkeydown={onKeydown}
         placeholder="Paste something here."
       ></textarea>
     </div>
@@ -288,11 +300,10 @@
       <div class="field">
         <div class="field-head">
           <label class="micro-label" for="det-t2">Second text</label>
-          <span class="micro-label words">{wordLabel(w2)}</span>
           <button
             class="icon-btn close-second"
             aria-label="Back to a single text"
-            title="Back to a single text"
+            title="Back to a single text (Ctrl+\)"
             onclick={() => setMode("single")}
           >
             <X size={14} />
@@ -302,7 +313,6 @@
           id="det-t2"
           bind:value={cs.second}
           oninput={onInput}
-          onkeydown={onKeydown}
           placeholder="And something else here."
         ></textarea>
       </div>
@@ -316,12 +326,17 @@
           class="btn btn-ghost small"
           onclick={swap}
           disabled={!cs.first.trim() && !cs.second.trim()}
+          title="Swap texts (Ctrl+Shift+\)"
         >
           <ArrowsLeftRight size={14} />
           Swap
         </button>
       {:else}
-        <button class="btn btn-ghost small" onclick={() => setMode("pair")}>
+        <button
+          class="btn btn-ghost small"
+          onclick={() => setMode("pair")}
+          title="Compare two texts (Ctrl+\)"
+        >
           <Columns size={14} />
           Compare two texts
         </button>
@@ -451,12 +466,8 @@
     min-height: 22px;
   }
 
-  .words {
-    margin-left: auto;
-    color: var(--ink-faint);
-  }
-
   .close-second {
+    margin-left: auto;
     width: 22px;
     height: 22px;
     color: var(--ink-secondary);
