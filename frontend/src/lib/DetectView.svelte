@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ArrowsLeftRight, Check, Columns, Shuffle, X } from "phosphor-svelte";
   import { api, ApiError } from "./api";
-  import { compareState as cs, persistDrafts } from "./compareState.svelte";
+  import { compareState as cs } from "./compareState.svelte";
   import { toast } from "./toast";
 
   interface Props {
@@ -97,9 +97,10 @@
     };
   });
 
-  // Typing only marks the result stale; scoring runs on Ctrl+Enter or a
-  // programmatic trigger (swap, mode toggle, try-example, restored draft).
-  // A counter makes sure a slow old answer can never overwrite a newer one.
+  // Typing only marks the result stale; scoring runs on Ctrl+Enter, paste
+  // into an empty box, or a programmatic trigger (swap, mode toggle,
+  // try-example). A counter makes sure a slow old answer can never overwrite
+  // a newer one.
   let requestId = 0;
 
   function clearResults() {
@@ -124,17 +125,31 @@
     return !!(pair ? cs.first.trim() && cs.second.trim() : cs.first.trim());
   }
 
+  // Set in paste (value still pre-insert), consumed in the following input
+  // once bind:value has caught up — microtasks alone race the bind.
+  let pasteIntoEmpty = false;
+
+  function onPaste(e: ClipboardEvent) {
+    const el = e.currentTarget as HTMLTextAreaElement;
+    const pasted = e.clipboardData?.getData("text") ?? "";
+    pasteIntoEmpty = !el.value.trim() && !!pasted.trim();
+  }
+
   function onInput() {
-    persistDrafts();
     if (!ready()) {
       clearResults();
+      pasteIntoEmpty = false;
+      return;
+    }
+    if (pasteIntoEmpty) {
+      pasteIntoEmpty = false;
+      queueRun();
       return;
     }
     stale = !upToDate();
   }
 
   function queueRun() {
-    persistDrafts();
     if (!ready()) {
       clearResults();
       return;
@@ -184,12 +199,8 @@
     }
   }
 
-  // Arriving on the tab with unscored text (a restored draft after a
-  // reload): score immediately.
-  if (
-    (cs.mode === "pair" ? cs.first.trim() && cs.second.trim() : cs.first.trim()) &&
-    !upToDate()
-  ) {
+  // Remounting after an Examples tab visit with dirty text: score again.
+  if (ready() && !upToDate()) {
     queueRun();
   }
 
@@ -215,7 +226,6 @@
       cs.lastScored = { a: cs.first, b: cs.second };
       saveHuman = saveHuman === "first" ? "second" : "first";
     }
-    persistDrafts();
     queueRun();
   }
 
@@ -293,6 +303,7 @@
         id="det-t1"
         bind:value={cs.first}
         oninput={onInput}
+        onpaste={onPaste}
         placeholder="Paste something here."
       ></textarea>
     </div>
@@ -313,6 +324,7 @@
           id="det-t2"
           bind:value={cs.second}
           oninput={onInput}
+          onpaste={onPaste}
           placeholder="And something else here."
         ></textarea>
       </div>

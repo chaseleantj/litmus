@@ -1,8 +1,8 @@
-"""Personal AI Detector — build the frontend if stale, serve it, open the browser.
+"""Litmus — build the frontend if stale, serve it, open the browser.
 
-    detector                # one process on http://127.0.0.1:8000, opens the browser
-    detector --no-browser   # same, but headless — for agents and scripts
-    detector --dev          # vite dev server (HMR) on :5173 + backend on :8000
+    litmus                # one process on http://127.0.0.1:8000, opens the browser
+    litmus --no-browser   # same, but headless — for agents and scripts
+    litmus --dev          # vite dev server (HMR) on :5173 + backend on :8000
 """
 
 import subprocess

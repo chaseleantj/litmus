@@ -238,7 +238,7 @@
       <h3>No training pairs yet</h3>
       <p>
         Each pair holds an AI-written version and your own version of the same content. From two
-        pairs up, the detector learns what your voice sounds like.
+        pairs up, Litmus learns what your voice sounds like.
       </p>
       <div class="empty-actions">
         <button class="btn btn-primary" onclick={startAdd}>Add your first pair</button>

@@ -27,7 +27,7 @@
 <div class="shell">
   <header>
     <div class="brand">
-      <h1 class="wordmark">Personal AI Detector</h1>
+      <h1 class="wordmark">Litmus</h1>
       {#if $mockActive}
         <span class="mock-pill" role="status">Sample data — changes aren’t saved</span>
       {/if}
@@ -47,7 +47,7 @@
       aria-current={tab === "examples" ? "page" : undefined}
       onclick={() => goTo("examples")}
     >
-      Examples
+      Training examples
     </button>
   </nav>
 

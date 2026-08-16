@@ -1,4 +1,4 @@
-# Deploying Personal AI Detector to DigitalOcean
+# Deploying Litmus to DigitalOcean
 
 One container serves everything: FastAPI handles `/api/*` and serves the built Svelte app at `/`. State is a single SQLite file, so the deployment needs a persistent disk.
 

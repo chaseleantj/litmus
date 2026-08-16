@@ -8,7 +8,7 @@ from pathlib import Path
 
 import requests
 
-MODEL = "openai/text-embedding-3-large"
+MODEL = "openai/text-embedding-3-small"
 REQUEST_TIMEOUT = 30
 
 # How far apart two texts must be before the difference is worth reporting.

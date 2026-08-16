@@ -1,4 +1,4 @@
-"""Personal AI Detector backend: examples CRUD + style comparison."""
+"""Litmus backend: examples CRUD + style comparison."""
 
 import json
 from contextlib import asynccontextmanager
@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Personal AI Detector",
+    title="Litmus",
     description=(
         "Trains a model to distinguish AI writing from your own, "
         "then teaches a personal AI to write like you."
