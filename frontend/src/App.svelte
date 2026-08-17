@@ -4,16 +4,34 @@
   import { compareState } from "./lib/compareState.svelte";
   import DetectView from "./lib/DetectView.svelte";
   import LibrarySheet from "./lib/LibrarySheet.svelte";
+  import MapView from "./lib/MapView.svelte";
   import Toasts from "./lib/Toasts.svelte";
   import { loadLibrary } from "./lib/library.svelte";
 
-  // "#/examples" is the pre-redesign URL for the same place.
-  function openFromHash(): boolean {
+  type View = "detect" | "map";
+
+  // "#/examples" is the pre-redesign URL for the library.
+  function libraryFromHash(): boolean {
     return location.hash === "#/library" || location.hash === "#/examples";
   }
 
-  let libraryOpen = $state(openFromHash());
+  function viewFromHash(): View | null {
+    if (location.hash === "#/map") return "map";
+    if (location.hash === "" || location.hash === "#/" || location.hash === "#") return "detect";
+    return null; // library hashes say nothing about the view underneath
+  }
+
+  let view = $state<View>(viewFromHash() ?? "detect");
+  let libraryOpen = $state(libraryFromHash());
   let opener: HTMLElement | null = null;
+
+  const viewHash = () => (view === "map" ? "#/map" : "#/");
+
+  function setView(next: View) {
+    if (view === next) return;
+    view = next;
+    history.replaceState(null, "", viewHash());
+  }
 
   function openLibrary() {
     opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -23,13 +41,17 @@
 
   function closeLibrary() {
     libraryOpen = false;
-    history.replaceState(null, "", "#/");
+    history.replaceState(null, "", viewHash());
     opener?.focus();
     opener = null;
   }
 
   $effect(() => {
-    const onHash = () => (libraryOpen = openFromHash());
+    const onHash = () => {
+      libraryOpen = libraryFromHash();
+      const next = viewFromHash();
+      if (next !== null) view = next;
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   });
@@ -39,7 +61,7 @@
 
 <!-- The shell owns the app's column width; comparing two texts needs the
      wider one, so the header rule always spans exactly the work beneath it. -->
-<div class="shell" class:wide={compareState.mode === "pair"}>
+<div class="shell" class:wide={view === "map" || compareState.mode === "pair"}>
   <header>
     <div class="brand">
       <h1 class="wordmark serif">Litmus</h1>
@@ -49,6 +71,24 @@
       {#if $mockActive}
         <span class="mock-note" role="status">Sample data — changes aren’t saved</span>
       {/if}
+      <nav class="seg" aria-label="View">
+        <button
+          class:active={view === "detect"}
+          aria-current={view === "detect" ? "page" : undefined}
+          title="Score a text against your voice"
+          onclick={() => setView("detect")}
+        >
+          Detect
+        </button>
+        <button
+          class:active={view === "map"}
+          aria-current={view === "map" ? "page" : undefined}
+          title="See your whole library as a map"
+          onclick={() => setView("map")}
+        >
+          Visualization
+        </button>
+      </nav>
       <button
         class="btn"
         onclick={openLibrary}
@@ -62,7 +102,11 @@
   <div class="header-rule" aria-hidden="true"></div>
 
   <main>
-    <DetectView onOpenLibrary={openLibrary} suspended={libraryOpen} />
+    {#if view === "detect"}
+      <DetectView onOpenLibrary={openLibrary} suspended={libraryOpen} />
+    {:else}
+      <MapView onOpenLibrary={openLibrary} />
+    {/if}
   </main>
 </div>
 

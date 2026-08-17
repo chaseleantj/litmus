@@ -102,6 +102,33 @@ export async function handle(method: string, path: string, body: unknown): Promi
     return { imported, total: examples.length };
   }
 
+  if (key === "GET /api/map") {
+    requireCalibrated();
+    await delay(1200); // emulate the embedding call
+    // Deterministic pseudo layout: AI texts drift left, human texts right,
+    // with hash-based scatter — enough structure to exercise the map UI.
+    const points = examples.flatMap((e) => {
+      return (["ai", "human"] as const).map((role) => {
+        const text = e[role];
+        const s = score(text);
+        let h = 0;
+        for (let i = 0; i < text.length; i++) h = (h * 33 + text.charCodeAt(i)) >>> 0;
+        const jx = ((h % 1000) / 1000 - 0.5) * 0.45;
+        const jy = (((h >> 10) % 1000) / 1000 - 0.5) * 0.9;
+        return {
+          pair_id: e.id,
+          role,
+          snippet: text.slice(0, 240),
+          truncated: text.length > 240,
+          score: role === "ai" ? -Math.abs(s) - 0.02 : Math.abs(s) + 0.02,
+          x: Math.min(1, Math.max(0, (role === "ai" ? 0.28 : 0.72) + jx)),
+          y: Math.min(1, Math.max(0, 0.5 + jy)),
+        };
+      });
+    });
+    return { points, method: "pca", pairs: examples.length };
+  }
+
   if (key === "POST /api/compare") {
     requireCalibrated();
     await delay(1500); // emulate the embedding call

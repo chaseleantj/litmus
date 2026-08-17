@@ -48,5 +48,15 @@ class DirectionCache(Base):
     unit_json: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class MapCache(Base):
+    """The computed map payload (scores + 2D layout), keyed by the example
+    texts exactly like DirectionCache — any library change recomputes it."""
+
+    __tablename__ = "map_cache"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 def init_db() -> None:
     Base.metadata.create_all(engine)

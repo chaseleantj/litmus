@@ -113,6 +113,87 @@ def learn_direction(examples: list[tuple[str, str]], api_key: str) -> dict:
     return {"unit": unit, "bias": dot(midpoint, unit)}
 
 
+def _pca_2d(vectors: list[list[float]]) -> list[list[float]]:
+    """Top-2 principal components via the Gram-matrix trick, pure Python.
+    Fine for a personal library (N is small); used when UMAP is unavailable
+    or the library is too small for a meaningful neighbor graph."""
+    n = len(vectors)
+    dims = len(vectors[0])
+    mean = [sum(v[d] for v in vectors) / n for d in range(dims)]
+    centered = [[v[d] - mean[d] for d in range(dims)] for v in vectors]
+    gram = [[dot(a, b) for b in centered] for a in centered]
+
+    def top_eigenvector(matrix: list[list[float]], deflate: list[float] | None) -> list[float]:
+        vec = [math.sin(i + 1.0) for i in range(n)]  # deterministic start
+        for _ in range(100):
+            if deflate is not None:
+                proj = dot(vec, deflate)
+                vec = [x - proj * y for x, y in zip(vec, deflate)]
+            nxt = [dot(row, vec) for row in matrix]
+            length = math.hypot(*nxt)
+            if length < 1e-12:
+                return [0.0] * n
+            vec = [x / length for x in nxt]
+        return vec
+
+    e1 = top_eigenvector(gram, None)
+    e2 = top_eigenvector(gram, e1)
+    # Coordinates are the eigenvectors scaled by their singular values.
+    s1 = math.sqrt(max(0.0, dot(e1, [dot(row, e1) for row in gram])))
+    s2 = math.sqrt(max(0.0, dot(e2, [dot(row, e2) for row in gram])))
+    return [[e1[i] * s1, e2[i] * s2] for i in range(n)]
+
+
+# UMAP needs a neighbor graph that is meaningful; below this many points the
+# spectral machinery degenerates and PCA reads better anyway.
+MIN_UMAP_POINTS = 8
+
+
+def project_2d(vectors: list[list[float]]) -> tuple[list[list[float]], str]:
+    """2D layout of the embedding vectors, normalized to [0, 1] with the
+    aspect ratio preserved. Returns (coords, method) where method names what
+    actually ran — "umap" or "pca" — so the UI never mislabels the picture."""
+    coords: list[list[float]] | None = None
+    method = "pca"
+    if len(vectors) >= MIN_UMAP_POINTS:
+        try:
+            import warnings
+
+            import numpy as np
+            from umap import UMAP
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                raw = UMAP(
+                    n_neighbors=min(15, len(vectors) - 1),
+                    min_dist=0.4,
+                    metric="cosine",
+                    random_state=42,  # same library -> same picture
+                ).fit_transform(np.asarray(vectors, dtype=np.float32))
+            coords = [[float(x), float(y)] for x, y in raw]
+            method = "umap"
+        except ImportError:
+            coords = None
+    if coords is None:
+        coords = _pca_2d(vectors)
+
+    xs = [c[0] for c in coords]
+    ys = [c[1] for c in coords]
+
+    # Each axis fills [0, 1] independently: neither UMAP nor PCA axes carry
+    # units, and the client stretches to its canvas anyway. A zero-extent
+    # axis (identical vectors) centers instead of dividing by zero.
+    def norm(value: float, lo: float, hi: float) -> float:
+        if hi - lo < 1e-12:
+            return 0.5
+        return (value - lo) / (hi - lo)
+
+    return (
+        [[norm(c[0], min(xs), max(xs)), norm(c[1], min(ys), max(ys))] for c in coords],
+        method,
+    )
+
+
 def score_one(text: str, direction: dict, api_key: str) -> dict:
     (v,) = embed([text], api_key)
     return {"score": dot(v, direction["unit"]) - direction["bias"]}

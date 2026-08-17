@@ -3,6 +3,7 @@
   import { api, ApiError } from "./api";
   import { compareState as cs } from "./compareState.svelte";
   import { addPair, library, MIN_PAIRS } from "./library.svelte";
+  import { fmtScore, pickDomain, scalePos, tickLabel } from "./scale";
   import { toast } from "./toast";
 
   interface Props {
@@ -40,13 +41,6 @@
   const calibrated = $derived(
     library.loading || library.error !== null || library.examples.length >= MIN_PAIRS,
   );
-
-  /**
-   * Both markers float freely on a fixed symmetric scale. The domain is the
-   * smallest round span that fits every score with headroom, so ticks stay
-   * at clean values while large scores never leave the axis.
-   */
-  const DOMAINS = [0.2, 0.3, 0.4, 0.5, 0.75, 1];
 
   interface Marker {
     score: number;
@@ -117,8 +111,8 @@
       markers = [{ score: cs.single.score, label: null, tier: "low", showValue: true }];
     }
     const maxAbs = Math.max(...markers.map((m) => Math.abs(m.score)));
-    const domain = DOMAINS.find((d) => d >= maxAbs * 1.05) ?? DOMAINS[DOMAINS.length - 1];
-    const pos = (s: number) => (0.5 + Math.max(-1, Math.min(1, s / domain)) / 2) * 100;
+    const domain = pickDomain(maxAbs);
+    const pos = (s: number) => scalePos(s, domain);
     const side = (s: number) => (Math.abs(s) < TOO_CLOSE ? "" : s > 0 ? "side-human" : "side-ai");
     const positions = markers.map((m) => pos(m.score));
     // Near-identical scores put the pins on top of each other; nudge them off
@@ -141,12 +135,6 @@
       })),
     };
   });
-
-  const tickLabel = (v: number) =>
-    (v > 0 ? "+" : "") + String(parseFloat(v.toFixed(3)));
-
-  /** Signed score, three decimals: "+0.041", "-0.113", "0.000". */
-  const fmtScore = (s: number) => (s > 0 ? "+" : "") + s.toFixed(3);
 
   type Verdict =
     | { kind: "identical" }
@@ -493,7 +481,7 @@
       <div class="chart" class:tiered>
         <span class="micro-label pole pole-ai" aria-hidden="true">AI</span>
         <div class="scale" bind:this={scaleEl}>
-          <div class="strip">
+          <div class="litmus-strip strip">
             {#if chart.band}
               <div
                 class="tie-band"
@@ -608,52 +596,7 @@
     margin-right: auto;
   }
 
-  /* Segmented control: the mode switch and the save-flow picker. Sized to the
-     28px small-control height so it sits level with the buttons beside it. */
-  .seg {
-    display: inline-flex;
-    padding: 1px;
-    gap: 2px;
-    background: var(--surface-muted);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-  }
-
-  .seg button {
-    appearance: none;
-    display: inline-flex;
-    align-items: center;
-    /* 24px is the WCAG 2.2 minimum target; the track stays 28px overall. */
-    height: 24px;
-    border: none;
-    background: none;
-    border-radius: var(--radius-xs);
-    padding: 0 11px;
-    font-size: var(--text-body);
-    /* Same weight in both states: the active half is marked by its raised
-       surface and darker ink, and a weight change would reflow the track. */
-    font-weight: 500;
-    line-height: 1;
-    color: var(--ink-secondary);
-    transition:
-      color var(--speed) var(--ease),
-      background var(--speed) var(--ease),
-      box-shadow var(--speed) var(--ease);
-  }
-
-  .seg button:hover:not(.active) {
-    color: var(--ink);
-  }
-
-  .seg button.active {
-    background: var(--surface);
-    color: var(--ink);
-    box-shadow: 0 1px 2px hsl(var(--ink-hsl) / 0.08);
-  }
-
-  .seg button:focus-visible {
-    outline-offset: 1px;
-  }
+  /* .seg (segmented control) styles are shared — see app.css. */
 
   .rescore-hint {
     margin: 16px 0 0;
@@ -726,19 +669,9 @@
     padding-bottom: 26px;
   }
 
+  /* The strip's look is the shared .litmus-strip (app.css); only the
+     tie-band clipping is local. */
   .strip {
-    position: relative;
-    height: 12px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--ai) 52%, var(--surface)),
-      color-mix(in srgb, var(--ai) 14%, var(--surface)) 40%,
-      var(--surface) 50%,
-      color-mix(in srgb, var(--human) 14%, var(--surface)) 60%,
-      color-mix(in srgb, var(--human) 52%, var(--surface))
-    );
     overflow: hidden;
   }
 

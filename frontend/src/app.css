@@ -186,6 +186,54 @@ input {
   gap: 5px;
 }
 
+/* Segmented control: mode switches (one/two texts, map/axis, view tabs).
+   Sized to the 28px small-control height so it sits level with .btn.small. */
+.seg {
+  display: inline-flex;
+  padding: 1px;
+  gap: 2px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.seg button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* 24px is the WCAG 2.2 minimum target; the track stays 28px overall. */
+  height: 24px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-xs);
+  padding: 0 11px;
+  font-size: var(--text-body);
+  /* Same weight in both states: the active half is marked by its raised
+     surface and darker ink, and a weight change would reflow the track. */
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ink-secondary);
+  transition:
+    color var(--speed) var(--ease),
+    background var(--speed) var(--ease),
+    box-shadow var(--speed) var(--ease);
+}
+
+.seg button:hover:not(.active) {
+  color: var(--ink);
+}
+
+.seg button.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px hsl(var(--ink-hsl) / 0.08);
+}
+
+.seg button:focus-visible {
+  outline-offset: 1px;
+}
+
 /* Square icon-only ghost button for row actions */
 .icon-btn {
   display: inline-flex;
@@ -371,6 +419,24 @@ kbd {
   gap: 8px;
   justify-content: center;
   flex-wrap: wrap;
+}
+
+/* The litmus scale itself: AI indigo fading through paper into human ember.
+   One definition — the Detect result chart and the map's axis view must
+   always be the same scale to the eye. */
+.litmus-strip {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--ai) 52%, var(--surface)),
+    color-mix(in srgb, var(--ai) 14%, var(--surface)) 40%,
+    var(--surface) 50%,
+    color-mix(in srgb, var(--human) 14%, var(--surface)) 60%,
+    color-mix(in srgb, var(--human) 52%, var(--surface))
+  );
 }
 
 /* Loading placeholder: the consumer sets the shape, this sets the shimmer. */

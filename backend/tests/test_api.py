@@ -208,6 +208,110 @@ def test_scores_are_centered_on_the_class_midpoint(client, fake_embed):
     assert abs(mean_human + mean_ai) < 1e-9
 
 
+# --- Map ----------------------------------------------------------------------
+
+
+def test_map_needs_two_examples(client, fake_embed):
+    clear_examples()
+    add(client)
+    r = client.get("/api/map")
+    assert r.status_code == 409
+    assert r.json() == {"detail": "Need at least 2 examples"}
+
+
+def test_map_returns_two_points_per_pair(client, fake_embed):
+    pairs = client.get("/api/examples").json()
+    r = client.get("/api/map")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["pairs"] == len(pairs)
+    assert body["method"] in {"umap", "pca"}
+    points = body["points"]
+    assert len(points) == 2 * len(pairs)
+    for p in points:
+        assert p["role"] in {"ai", "human"}
+        assert 0.0 <= p["x"] <= 1.0
+        assert 0.0 <= p["y"] <= 1.0
+        assert isinstance(p["score"], float)
+    # Both roles present for every pair.
+    by_pair = {(p["pair_id"], p["role"]) for p in points}
+    for pair in pairs:
+        assert (pair["id"], "ai") in by_pair
+        assert (pair["id"], "human") in by_pair
+
+
+def test_map_scores_match_the_scoring_axis(client, fake_embed):
+    """A point's map score is the same number /api/score would give its text —
+    the axis view and the detector share one axis by construction."""
+    some_pair = client.get("/api/examples").json()[0]
+    map_scores = {
+        (p["pair_id"], p["role"]): p["score"] for p in client.get("/api/map").json()["points"]
+    }
+    scored = client.post("/api/score", json={"text": some_pair["human"]}).json()["score"]
+    assert abs(map_scores[(some_pair["id"], "human")] - scored) < 1e-9
+
+
+def test_map_is_cached_until_the_library_changes(client, fake_embed):
+    client.get("/api/map")
+    calls_after_first = fake_embed.calls  # direction + map texts
+    client.get("/api/map")
+    assert fake_embed.calls == calls_after_first  # fully cached
+
+    add(client, "a brand new ai text", "a brand new human text")
+    client.get("/api/map")
+    assert fake_embed.calls > calls_after_first  # invalidated by the edit
+
+
+def test_map_snippets_are_truncated_and_say_so(client, fake_embed):
+    from app.main import SNIPPET_CHARS
+
+    clear_examples()
+    long_text = "long human words " * 40
+    assert len(long_text) > SNIPPET_CHARS
+    add(client, "short ai text", long_text)
+    add(client, "another ai text", "another human text")
+    points = client.get("/api/map").json()["points"]
+    long_point = next(p for p in points if p["truncated"])
+    assert long_point["snippet"] == long_text[:SNIPPET_CHARS]
+    short_point = next(p for p in points if p["snippet"] == "short ai text")
+    assert short_point["truncated"] is False
+
+
+def test_map_provider_failure_is_502(client, monkeypatch):
+    from app import scoring
+
+    def boom(texts, api_key):
+        raise scoring.EmbeddingError("provider down")
+
+    monkeypatch.setattr(scoring, "embed", boom)
+    r = client.get("/api/map")
+    assert r.status_code == 502
+    assert r.json() == {"detail": "provider down"}
+
+
+def test_project_2d_umap_and_pca_agree_on_the_contract():
+    """Both projection paths return unit-square coordinates for any N,
+    including degenerate inputs."""
+    from app.scoring import MIN_UMAP_POINTS, project_2d
+
+    # Above the UMAP threshold (umap-learn is installed in this venv).
+    import math
+
+    big = [[math.sin(i * 1.7 + d) for d in range(8)] for i in range(MIN_UMAP_POINTS + 4)]
+    coords, method = project_2d(big)
+    assert method == "umap"
+    assert all(0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 for x, y in coords)
+
+    # Below the threshold: PCA, same contract.
+    coords, method = project_2d(big[:4])
+    assert method == "pca"
+    assert all(0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 for x, y in coords)
+
+    # Identical vectors: no extent to normalize — everything centers.
+    coords, method = project_2d([[1.0, 2.0]] * 4)
+    assert all((x, y) == (0.5, 0.5) for x, y in coords)
+
+
 def test_compare_provider_failure_is_502(client, monkeypatch):
     from app import scoring
 

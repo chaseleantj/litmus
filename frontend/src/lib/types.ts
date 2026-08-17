@@ -20,6 +20,23 @@ export interface ScoreResult {
   score: number;
 }
 
+export interface MapPoint {
+  pair_id: number;
+  role: "ai" | "human";
+  snippet: string;
+  truncated: boolean;
+  score: number;
+  x: number;
+  y: number;
+}
+
+export interface MapResult {
+  points: MapPoint[];
+  /** Which projection actually produced the 2D layout. */
+  method: "umap" | "pca";
+  pairs: number;
+}
+
 export interface CompareResult {
   first: number;
   second: number;

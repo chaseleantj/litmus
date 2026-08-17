@@ -12,7 +12,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from sqlalchemy.orm import Session
 
 from . import scoring
-from .db import DirectionCache, Example, SessionLocal, init_db
+from .db import DirectionCache, Example, MapCache, SessionLocal, init_db
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SEED_FILE = REPO_ROOT / "examples.json"
@@ -139,6 +139,26 @@ class ScoreOut(BaseModel):
     score: float
 
 
+# Enough of a text for a map tooltip; the full versions live in the library.
+SNIPPET_CHARS = 240
+
+
+class MapPointOut(BaseModel):
+    pair_id: int
+    role: str  # "ai" | "human"
+    snippet: str
+    truncated: bool
+    score: float
+    x: float
+    y: float
+
+
+class MapOut(BaseModel):
+    points: list[MapPointOut]
+    method: str  # "umap" | "pca" — whichever projection actually ran
+    pairs: int
+
+
 # --- Examples CRUD ---------------------------------------------------------
 
 
@@ -260,6 +280,61 @@ def score_text(body: ScoreIn, db: Session = Depends(get_db)):
     api_key, direction = api_key_and_direction(db)
     with scoring_errors():
         return scoring.score_one(body.text, direction, api_key)
+
+
+# Same rationale as _direction_lock: the map is a multi-second computation
+# that concurrent requests would otherwise all repeat.
+_map_lock = threading.Lock()
+
+
+def build_map(db: Session) -> dict:
+    """Embed every example text once, score each along the learned axis, and
+    lay the embeddings out in 2D. Cached until the library changes."""
+    api_key, direction = api_key_and_direction(db)
+    rows = ordered_examples(db)
+    key = scoring.direction_key([(r.ai, r.human) for r in rows])
+    with _map_lock:
+        cached = db.get(MapCache, key)
+        if cached is not None:
+            return json.loads(cached.payload_json)
+
+        texts: list[str] = []
+        meta: list[tuple[int, str]] = []  # (pair_id, role), aligned with texts
+        for r in rows:
+            texts.append(r.ai)
+            meta.append((r.id, "ai"))
+            texts.append(r.human)
+            meta.append((r.id, "human"))
+
+        with scoring_errors():
+            vectors = scoring.embed(texts, api_key)
+        coords, method = scoring.project_2d(vectors)
+
+        payload = {
+            "points": [
+                {
+                    "pair_id": pair_id,
+                    "role": role,
+                    "snippet": text[:SNIPPET_CHARS],
+                    "truncated": len(text) > SNIPPET_CHARS,
+                    "score": scoring.dot(v, direction["unit"]) - direction["bias"],
+                    "x": xy[0],
+                    "y": xy[1],
+                }
+                for (pair_id, role), text, v, xy in zip(meta, texts, vectors, coords)
+            ],
+            "method": method,
+            "pairs": len(rows),
+        }
+        db.query(MapCache).delete()
+        db.add(MapCache(key=key, payload_json=json.dumps(payload)))
+        db.commit()
+        return payload
+
+
+@app.get("/api/map", response_model=MapOut)
+def map_of_examples(db: Session = Depends(get_db)):
+    return build_map(db)
 
 
 @app.get("/api/health")
