@@ -4,7 +4,6 @@ import hashlib
 import json
 import math
 import os
-import re
 from pathlib import Path
 
 import requests
@@ -198,113 +197,6 @@ def project_2d(vectors: list[list[float]]) -> tuple[list[list[float]], str]:
 def score_one(text: str, direction: dict, api_key: str) -> dict:
     (v,) = embed([text], api_key)
     return {"score": dot(v, direction["unit"]) - direction["bias"]}
-
-
-# --- Sentence-level analysis -------------------------------------------------
-# Ports of the two granular approaches validated in
-# backend/experiments/granular_detection.py, where both matched the whole-text
-# baseline at the document level (LOO AUC ~0.82, 100% paired accuracy):
-#   proj  = "sent-proj":       each sentence projected onto the production
-#           human-AI axis; document score = trimmed mean. Sentence scores share
-#           a whole-document offset, so they read as a relative ranking within
-#           the text.
-#   match = "bertscore-soft":  each sentence's softmax-weighted similarity to
-#           the pool of human example sentences minus the AI pool; document
-#           score = mean of the 3 most extreme sentences. Zero-centered, so
-#           sentence polarity is absolute.
-# Keep the constants and math in step with the experiment.
-
-MIN_SENT_CHARS = 15
-SOFTMAX_TEMP = 0.05
-
-_SENT_SEP = re.compile(r"(?<=[.!?])[\)\"']*\s+")
-
-
-def sentence_spans(text: str) -> list[tuple[int, int]]:
-    """Character spans of the text's sentences, as offsets into `text`.
-
-    Same splitting rule as the experiment's split_sentences: split after
-    sentence punctuation (trailing quotes/parens belong to the separator), and
-    merge fragments shorter than MIN_SENT_CHARS into their neighbour, because
-    tiny fragments embed unstably. A text with no split points is one span."""
-    spans: list[tuple[int, int]] = []
-    pos = 0
-    for match in [*_SENT_SEP.finditer(text), None]:
-        end = match.start() if match is not None else len(text)
-        seg = text[pos:end]
-        start = pos + (len(seg) - len(seg.lstrip()))
-        stop = end - (len(seg) - len(seg.rstrip()))
-        pos = match.end() if match is not None else end
-        if stop <= start:
-            continue
-        short = MIN_SENT_CHARS
-        if spans and (stop - start < short or spans[-1][1] - spans[-1][0] < short):
-            spans[-1] = (spans[-1][0], stop)
-        else:
-            spans.append((start, stop))
-    if not spans:
-        # Whitespace-only texts are rejected upstream; guard anyway.
-        stripped = text.strip()
-        first = text.find(stripped)
-        return [(first, first + len(stripped))]
-    return spans
-
-
-def sentence_pools(examples: list[tuple[str, str]], api_key: str) -> dict:
-    """Per-side pools of example-sentence embeddings — the reference set for
-    the "match" scorer. All sentences of all examples go in one embeddings
-    request."""
-    ai_sents: list[str] = []
-    human_sents: list[str] = []
-    for ai, human in examples:
-        ai_sents += [ai[a:b] for a, b in sentence_spans(ai)]
-        human_sents += [human[a:b] for a, b in sentence_spans(human)]
-    vectors = embed(human_sents + ai_sents, api_key)
-    return {"human": vectors[: len(human_sents)], "ai": vectors[len(human_sents):]}
-
-
-def _soft_affinity(v: list[float], pool: list[list[float]]) -> float:
-    """Softmax-weighted (T=SOFTMAX_TEMP) average similarity of v to the pool.
-    Shifting by the max similarity keeps exp() in range without changing the
-    weighted mean."""
-    sims = [dot(v, r) for r in pool]
-    peak = max(sims)
-    weights = [math.exp((s - peak) / SOFTMAX_TEMP) for s in sims]
-    return sum(w * s for w, s in zip(weights, sims)) / sum(weights)
-
-
-def _trimmed_mean(scores: list[float]) -> float:
-    """Mean with the single min and max dropped (when n >= 5)."""
-    if len(scores) < 5:
-        return sum(scores) / len(scores)
-    trimmed = sorted(scores)[1:-1]
-    return sum(trimmed) / len(trimmed)
-
-
-def _top3_extreme(scores: list[float]) -> float:
-    """Mean of the 3 scores with the largest magnitude (most confident)."""
-    top = sorted(scores, key=abs, reverse=True)[:3]
-    return sum(top) / len(top)
-
-
-def analyze(text: str, direction: dict, pools: dict, api_key: str) -> dict:
-    """Sentence-level breakdown: each sentence's span and its score under both
-    granular approaches, plus each approach's document score."""
-    spans = sentence_spans(text)
-    vectors = embed([text[a:b] for a, b in spans], api_key)
-    proj = [dot(v, direction["unit"]) - direction["bias"] for v in vectors]
-    match = [
-        _soft_affinity(v, pools["human"]) - _soft_affinity(v, pools["ai"])
-        for v in vectors
-    ]
-    return {
-        "sentences": [
-            {"start": a, "end": b, "proj": p, "match": m}
-            for (a, b), p, m in zip(spans, proj, match)
-        ],
-        "proj_score": _trimmed_mean(proj),
-        "match_score": _top3_extreme(match),
-    }
 
 
 def compare(first: str, second: str, direction: dict | None, api_key: str) -> dict:

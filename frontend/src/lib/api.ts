@@ -1,7 +1,6 @@
 import { writable } from "svelte/store";
 import { ApiError } from "./errors";
 import type {
-  AnalyzeResult,
   CompareResult,
   Example,
   ImportResult,
@@ -104,5 +103,4 @@ export const api = {
     request<CompareResult>("POST", "/api/compare", { first, second }),
   score: (text: string) => request<ScoreResult>("POST", "/api/score", { text }),
   map: () => request<MapResult>("GET", "/api/map"),
-  analyze: (text: string) => request<AnalyzeResult>("POST", "/api/analyze", { text }),
 };

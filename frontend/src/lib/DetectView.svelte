@@ -2,7 +2,6 @@
   import { ArrowsLeftRight, Check, Shuffle } from "phosphor-svelte";
   import { api, ApiError } from "./api";
   import { compareState as cs } from "./compareState.svelte";
-  import SentenceHeatmap from "./SentenceHeatmap.svelte";
   import { addPair, library, MIN_PAIRS } from "./library.svelte";
   import { fmtScore, pickDomain, scalePos, tickLabel } from "./scale";
   import { toast } from "./toast";
@@ -18,12 +17,6 @@
   let scoring = $state(false);
   let stale = $state(false);
   let error = $state<{ status: number; message: string } | null>(null);
-
-  // The sentence-level breakdown loads beside the whole-text score and fails
-  // on its own: a broken /api/analyze never blocks the verdict. No "analyzing"
-  // flag: whenever a single text has a score, its analysis has either landed
-  // (cs.analysis), failed (this error), or is still in flight (the skeleton).
-  let analysisError = $state<string | null>(null);
 
   // "Save as training pair" flow: which text is the human version, and
   // whether the current result has already been saved.
@@ -182,10 +175,7 @@
     cs.result = null;
     cs.single = null;
     cs.lastScoredSingle = null;
-    cs.analysis = null;
-    cs.lastAnalyzed = null;
     error = null;
-    analysisError = null;
     stale = false;
     scoring = false;
   }
@@ -256,9 +246,6 @@
         savedPair = false;
         saveHuman = r.gap >= 0 ? "second" : "first";
       } else {
-        // The breakdown runs in parallel with the score, so the verdict
-        // appears as soon as the (faster) whole-text call answers.
-        void runAnalysis(a, id);
         const r = await api.score(a);
         if (id !== requestId) return;
         cs.lastScoredSingle = a;
@@ -283,32 +270,6 @@
         stale = false;
       }
     }
-  }
-
-  async function runAnalysis(text: string, id: number) {
-    analysisError = null;
-    cs.analysis = null;
-    cs.lastAnalyzed = null;
-    try {
-      const r = await api.analyze(text);
-      if (id !== requestId) return;
-      cs.analysis = r;
-      cs.lastAnalyzed = text;
-    } catch (err) {
-      if (id !== requestId) return;
-      analysisError =
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "That did not work.";
-    }
-  }
-
-  /** Retry only the breakdown — the whole-text score is already up to date,
-   *  so queueRun() would refuse to re-run. */
-  function retryAnalysis() {
-    if (cs.lastScoredSingle !== null) void runAnalysis(cs.lastScoredSingle, requestId);
   }
 
   // If the component ever remounts with dirty text (e.g. HMR), score again.
@@ -552,57 +513,6 @@
         </div>
         <span class="micro-label pole pole-human" aria-hidden="true">Human</span>
       </div>
-
-      {#if !pair}
-        <div class="granular">
-          <div class="granular-head">
-            <span class="micro-label">By sentence</span>
-            <div class="seg" role="group" aria-label="Sentence heatmap approach">
-              <button
-                class:active={cs.analysisView === "proj"}
-                aria-pressed={cs.analysisView === "proj"}
-                title="Project each sentence onto your human–AI axis"
-                onclick={() => (cs.analysisView = "proj")}
-              >
-                Axis
-              </button>
-              <button
-                class:active={cs.analysisView === "match"}
-                aria-pressed={cs.analysisView === "match"}
-                title="Match each sentence against your example sentences"
-                onclick={() => (cs.analysisView = "match")}
-              >
-                Match
-              </button>
-              <button
-                class:active={cs.analysisView === "split"}
-                aria-pressed={cs.analysisView === "split"}
-                title="Show both approaches side by side"
-                onclick={() => (cs.analysisView = "split")}
-              >
-                Side by side
-              </button>
-            </div>
-          </div>
-          {#if cs.analysis && cs.lastAnalyzed !== null && cs.lastAnalyzed === cs.lastScoredSingle}
-            <SentenceHeatmap text={cs.lastAnalyzed} analysis={cs.analysis} />
-          {:else if analysisError}
-            <div class="granular-note" role="alert">
-              <span>Couldn’t score the sentences. {analysisError}</span>
-              <button class="btn btn-ghost small" onclick={retryAnalysis}>Try again</button>
-            </div>
-          {:else}
-            <!-- In flight — including the moment /api/analyze answered for a
-                 text whose /api/score is still pending. Never an empty body. -->
-            <div class="granular-loading">
-              <span class="sr-only">Scoring sentences…</span>
-              <div class="skeleton line" aria-hidden="true"></div>
-              <div class="skeleton line" aria-hidden="true"></div>
-              <div class="skeleton line short" aria-hidden="true"></div>
-            </div>
-          {/if}
-        </div>
-      {/if}
 
       {#if pair && verdict.kind !== "identical"}
         <div class="result-foot">
@@ -917,53 +827,10 @@
   }
 
   /* Stands in for the litmus strip while scoring: same shape, no reading. */
-  .loading-strip .skeleton {
+  .skeleton {
     height: 12px;
     border: 1px solid var(--border);
     border-radius: 999px;
-  }
-
-  /* ---------- Sentence breakdown ---------- */
-  .granular {
-    margin-top: 32px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-  }
-
-  .granular-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-
-  /* Stands in for the passage while sentences score: three text-ish lines. */
-  .granular-loading {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 10px 2px 6px;
-  }
-
-  .granular-loading .line {
-    height: 13px;
-    border-radius: 4px;
-  }
-
-  .granular-loading .short {
-    width: 62%;
-  }
-
-  .granular-note {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    font-size: var(--text-body);
-    color: var(--ink-secondary);
   }
 
   @media (max-width: 760px) {
