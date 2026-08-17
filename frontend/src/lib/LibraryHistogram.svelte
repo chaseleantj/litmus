@@ -6,6 +6,7 @@
    * file only draws them.
    */
   import {
+    bucketCount,
     bucketReadout,
     buildHistogram,
     histogramCaption,
@@ -35,7 +36,7 @@
   const caption = $derived(histogramCaption(hist, range));
 
   // Pointer and keyboard each highlight a bucket; whichever was used last
-  // wins, so the reading can never disagree with the focus ring.
+  // wins, so the tooltip can never disagree with the focus ring.
   let hovered = $state<number | null>(null);
   let focused = $state<number | null>(null);
   const active = $derived(hovered ?? focused);
@@ -47,8 +48,6 @@
     hovered = null;
     focused = null;
   });
-
-  const readout = $derived(active === null ? caption : bucketReadout(hist.buckets[active]));
 
   const emptyNote = $derived.by(() => {
     const phrase = RANGES.find((r) => r.id === range)?.phrase ?? "";
@@ -95,20 +94,13 @@
   {#if hist.total === 0}
     <p class="empty">{emptyNote}</p>
     {#if hist.undated > 0}
-      <p class="caption">{undatedNote(hist)}.</p>
+      <p class="note">{undatedNote(hist)}.</p>
     {/if}
   {:else}
     <div class="plot">
-      <div class="grid" aria-hidden="true">
-        {#each hist.ticks as t (t)}
-          <div class="gridline" style="bottom: {(t / hist.yMax) * 100}%">
-            <span class="micro-label tick">{t}</span>
-          </div>
-        {/each}
-      </div>
       <!-- Bars tile the plot edge to edge: the space around a bar belongs to
            that bar's bucket, so the pointer never falls through a gap. Each is
-           a real button, so hover, focus and touch all reach the same reading
+           a real button, so hover, focus and touch all reach the same tooltip
            without a second keyboard path bolted on. -->
       <div class="bars" role="group" aria-label={caption}>
         {#each hist.buckets as b, i (i)}
@@ -132,10 +124,17 @@
             onclick={() => (focused = i)}
             onkeydown={(e) => onBarKeydown(e, i)}
           >
+            {#if active === i}
+              <span
+                class="tip"
+                role="tooltip"
+                style="bottom: calc({(b.count === 0 ? 100 : (b.count / hist.yMax) * 100)}% + 6px)"
+              >{bucketCount(b)}</span>
+            {/if}
             <span
               class="bar"
               class:zero={b.count === 0}
-              style="height: {(b.count / hist.yMax) * 100}%"
+              style="height: {b.count === 0 ? 100 : (b.count / hist.yMax) * 100}%"
             ></span>
           </button>
         {/each}
@@ -145,7 +144,9 @@
       <span class="micro-label">{hist.buckets[0].axisLabel}</span>
       <span class="micro-label">{hist.buckets[hist.buckets.length - 1].axisLabel}</span>
     </div>
-    <p class="caption" aria-live="polite">{readout}</p>
+    {#if hist.undated > 0}
+      <p class="note">{undatedNote(hist)}.</p>
+    {/if}
   {/if}
 </section>
 
@@ -164,36 +165,10 @@
     margin-bottom: 10px;
   }
 
-  /* The tick numbers live in this gutter, so the plot and the axis labels
-     below it share one left edge. */
   .plot {
     position: relative;
     height: 64px;
-    padding-left: 22px;
-  }
-
-  .grid {
-    position: absolute;
-    inset: 0 0 0 22px;
-  }
-
-  .gridline {
-    position: absolute;
-    left: 0;
-    right: 0;
-    border-top: 1px solid var(--border);
-  }
-
-  /* The zero line is the chart's baseline, not a gridline. */
-  .gridline:first-child {
-    border-top-color: var(--border-strong);
-  }
-
-  .tick {
-    position: absolute;
-    right: calc(100% + 6px);
-    top: -0.7em;
-    color: var(--ink-faint);
+    border-bottom: 1px solid var(--border-strong);
   }
 
   .bars {
@@ -204,6 +179,7 @@
   }
 
   .slot {
+    position: relative;
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -239,16 +215,19 @@
     background: hsl(var(--ink-hsl) / 0.78);
   }
 
-  /* An empty bucket draws nothing — the baseline already runs under it, and
-     its slot still answers to hover and the arrow keys. */
+  /* Empty days still draw a full-height column, just barely there, so the
+     plot keeps a regular rhythm. */
   .bar.zero {
-    min-height: 0;
+    background: hsl(var(--ink-hsl) / 0.06);
+  }
+
+  .slot.active .bar.zero {
+    background: hsl(var(--ink-hsl) / 0.1);
   }
 
   .axis {
     display: flex;
     justify-content: space-between;
-    padding-left: 22px;
     margin-top: 5px;
   }
 
@@ -256,8 +235,39 @@
     color: var(--ink-faint);
   }
 
-  .caption,
-  .empty {
+  .tip {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    width: max-content;
+    max-width: 180px;
+    padding: 5px 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-xs);
+    background: var(--surface);
+    box-shadow: var(--shadow-toast);
+    color: var(--ink);
+    font-size: var(--text-micro);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .slot:first-child .tip {
+    left: 0;
+    transform: none;
+  }
+
+  .slot:last-child .tip {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+
+  .empty,
+  .note {
     margin-top: 6px;
     font-size: var(--text-body);
     color: var(--ink-secondary);
@@ -267,12 +277,5 @@
     padding: 10px 0 4px;
     text-align: center;
     text-wrap: balance;
-  }
-
-  /* One line, always: the readout swaps in on hover without nudging the list
-     below it. */
-  .caption {
-    min-height: 1.55em;
-    font-variant-numeric: tabular-nums;
   }
 </style>

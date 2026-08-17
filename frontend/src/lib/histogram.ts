@@ -197,8 +197,11 @@ export function buildHistogram(examples: Example[], range: RangeId, now = new Da
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-/** "Mon, 12 Aug — 3 pairs": the hover/focus readout and each bar's label. */
-export const bucketReadout = (b: Bucket): string => `${b.label} — ${plural(b.count, "pair")}`;
+/** "3 pairs": the hover tooltip. */
+export const bucketCount = (b: Bucket): string => plural(b.count, "pair");
+
+/** "Mon, 12 Aug — 3 pairs": each bar's accessible name. */
+export const bucketReadout = (b: Bucket): string => `${b.label} — ${bucketCount(b)}`;
 
 /**
  * The one disclosure for pairs the chart cannot place, worded the same way
