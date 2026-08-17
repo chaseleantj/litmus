@@ -13,6 +13,8 @@ COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./
 COPY --from=frontend /app/frontend/dist /app/frontend/dist
+# Seeds an empty database on first boot (app.main.SEED_FILE)
+COPY examples.json /app/examples.json
 
 # SQLite lives here; mount a volume at /app/backend/data to persist it
 VOLUME ["/app/backend/data"]

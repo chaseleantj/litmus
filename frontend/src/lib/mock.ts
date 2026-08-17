@@ -4,6 +4,7 @@
  * guarded by `import.meta.env.DEV`.
  */
 import { ApiError } from "./errors";
+import { MIN_PAIRS } from "./library.svelte";
 import type { Example, PairInput } from "./types";
 
 const now = () => new Date().toISOString();
@@ -24,6 +25,21 @@ const seedPairs: PairInput[] = [
     human:
       "To grow a high quality copper sulfate crystal, first you need to create a supersaturated solution. Start by heating 200 mL of distilled water to near-boiling. Then, add 80 grams of copper sulfate powder to the water and keep stirring to make it dissolve faster.",
   },
+  {
+    ai: "I hope this message finds you well. I wanted to reach out to provide a quick update regarding the migration timeline. We have made significant progress on the database layer, and we remain on track to complete the remaining work by Friday. Please do not hesitate to reach out should you have any questions or concerns.",
+    human:
+      "Quick update on the migration: the database layer is done, and the rest should land by Friday. Ping me if anything looks off.",
+  },
+  {
+    ai: "This utility provides a comprehensive solution for parsing configuration files. It seamlessly handles YAML, JSON, and TOML formats, ensuring a robust and flexible experience for developers. To get started, simply install the package and import the parser module.",
+    human:
+      "Parses config files in YAML, JSON, or TOML. Install the package, import `parser`, and call `parser.load(path)` — it figures out the format from the file extension.",
+  },
+  {
+    ai: "Overall, the proposal is well-structured and demonstrates a clear understanding of the problem space. However, there are several areas that could benefit from further refinement. Firstly, the budget section would be strengthened by a detailed breakdown of costs. Additionally, the timeline appears somewhat optimistic given the overall scope.",
+    human:
+      "The proposal reads well and the problem framing makes sense. Two things to fix: the budget needs an actual cost breakdown, and the timeline feels optimistic for this scope — I'd add two weeks of buffer.",
+  },
 ];
 
 let nextId = 1;
@@ -40,6 +56,13 @@ function detailError(status: number, detail: string): never {
   throw new ApiError(status, detail);
 }
 
+/** The backend's 409, worded the same way (app/main.py require_calibrated). */
+function requireCalibrated(): void {
+  if (examples.length < MIN_PAIRS) {
+    detailError(409, `Need at least ${MIN_PAIRS} examples`);
+  }
+}
+
 /** Deterministic pseudo "human-likeness" score in roughly -0.2…+0.2, matching
  * the real backend's signed, near-zero scale. */
 function score(text: string): number {
@@ -52,9 +75,7 @@ export async function handle(method: string, path: string, body: unknown): Promi
   await delay(250);
   const key = `${method} ${path}`;
 
-  if (key === "GET /api/health") return { status: "ok", examples: examples.length };
   if (key === "GET /api/examples") return examples.map((e) => ({ ...e }));
-  if (key === "GET /api/examples/export") return examples.map(({ ai, human }) => ({ ai, human }));
 
   if (key === "POST /api/examples") {
     const p = body as PairInput;
@@ -64,45 +85,37 @@ export async function handle(method: string, path: string, body: unknown): Promi
   }
 
   if (key === "POST /api/examples/import") {
-    const items = body as unknown[];
+    // Mirrors the backend: exact duplicates are skipped, and `total` is the
+    // resulting library size — not the size of the request.
+    const seen = new Set(examples.map((e) => `${e.ai}\u0000${e.human}`));
     let imported = 0;
-    for (const item of items) {
+    for (const item of body as unknown[]) {
       const p = item as Partial<PairInput>;
-      if (typeof p?.ai === "string" && typeof p?.human === "string" && p.ai.trim() && p.human.trim()) {
-        examples.push({ id: nextId++, ai: p.ai, human: p.human, created_at: now(), updated_at: now() });
-        imported++;
-      }
+      if (typeof p?.ai !== "string" || typeof p?.human !== "string") continue;
+      if (!p.ai.trim() || !p.human.trim()) continue;
+      const dedupeKey = `${p.ai}\u0000${p.human}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      examples.push({ id: nextId++, ai: p.ai, human: p.human, created_at: now(), updated_at: now() });
+      imported++;
     }
-    return { imported, total: items.length };
+    return { imported, total: examples.length };
   }
 
   if (key === "POST /api/compare") {
-    if (examples.length < 2) detailError(409, "Need at least 2 examples to compare texts.");
+    requireCalibrated();
     await delay(1500); // emulate the embedding call
     const { first, second } = body as { first: string; second: string };
+    if (first.trim() === second.trim()) return { first: 0, second: 0, gap: 0 };
     const a = score(first);
     const b = score(second);
-    const gap = b - a;
-    const who = gap > 0 ? "Text 2" : "Text 1";
-    const summary =
-      Math.abs(gap) < 0.02
-        ? "The two texts are too close to call."
-        : Math.abs(gap) >= 0.1
-          ? `${who} sounds clearly more human.`
-          : `${who} sounds slightly more human.`;
-    return { first: a, second: b, gap, summary };
+    return { first: a, second: b, gap: b - a };
   }
 
   if (key === "POST /api/score") {
-    if (examples.length < 2) detailError(409, "Need at least 2 examples to score texts.");
+    requireCalibrated();
     await delay(1500); // emulate the embedding call
-    const { text } = body as { text: string };
-    const s = score(text);
-    const summary =
-      Math.abs(s) < 0.02
-        ? "Right on the line - hard to tell."
-        : `This text sounds ${Math.abs(s) >= 0.1 ? "clearly" : "slightly"} ${s > 0 ? "more human" : "more AI"}.`;
-    return { score: s, summary };
+    return { score: score((body as { text: string }).text) };
   }
 
   const putMatch = path.match(/^\/api\/examples\/(\d+)$/);

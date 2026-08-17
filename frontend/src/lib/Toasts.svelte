@@ -38,8 +38,8 @@
     gap: 9px;
     padding: 10px 12px;
     border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-lg);
-    font-size: 13.5px;
+    box-shadow: var(--shadow-toast);
+    font-size: var(--text-body);
     animation: rise 180ms var(--ease);
   }
 
@@ -50,23 +50,28 @@
 
   .toast.success {
     background: var(--ink);
-    color: #fff;
+    color: var(--paper);
   }
 
   .toast.error {
     background: var(--danger);
-    color: #fff;
+    color: var(--paper);
   }
 
   .toast button {
     appearance: none;
+    /* WCAG 2.2 minimum target — it is the only way to dismiss early. */
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
     border: none;
     background: none;
     color: inherit;
     opacity: 0.65;
-    padding: 3px;
     display: inline-flex;
-    border-radius: 5px;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-xs);
   }
 
   .toast button:hover {
@@ -74,7 +79,7 @@
   }
 
   .toast button:focus-visible {
-    outline-color: #fff;
+    outline-color: var(--paper);
   }
 
   @keyframes rise {

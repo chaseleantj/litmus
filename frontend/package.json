@@ -18,6 +18,7 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
+    "@fontsource/fraunces": "^5.3.0",
     "@fontsource/manrope": "^5.3.0",
     "phosphor-svelte": "^3.1.0"
   }

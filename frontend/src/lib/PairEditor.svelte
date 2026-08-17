@@ -30,26 +30,30 @@
 </script>
 
 <form class="card editor" onsubmit={submit}>
-  <h3>{heading}</h3>
+  <h3 class="serif">{heading}</h3>
+  <!-- The library's column headers sit directly above this editor and label
+       both columns, so the fields only name themselves once they stack. -->
   <div class="fields">
-    <label>
-      <span class="dot-label ai">AI version</span>
+    <div class="field">
+      <span class="micro-label dot-marker ai stacked-only">AI version</span>
       <textarea
         bind:value={ai}
         rows="7"
+        aria-label="AI version"
         placeholder="Paste the AI-written version of the text…"
         disabled={saving}
       ></textarea>
-    </label>
-    <label>
-      <span class="dot-label human">Human version</span>
+    </div>
+    <div class="field">
+      <span class="micro-label dot-marker human stacked-only">Your version</span>
       <textarea
         bind:value={human}
         rows="7"
+        aria-label="Your version"
         placeholder="Paste your own version of the same content…"
         disabled={saving}
       ></textarea>
-    </label>
+    </div>
   </div>
   <div class="actions">
     <span class="hint" aria-live="polite">
@@ -71,13 +75,14 @@
 </form>
 
 <style>
+  /* Padding and column gap are chosen so the two fields land on the same
+     axis as the library's column headers and pair cards. */
   .editor {
-    padding: 18px 20px 16px;
+    padding: 18px 18px 16px;
   }
 
   h3 {
-    font-size: 14.5px;
-    font-weight: 600;
+    font-size: var(--text-title);
     letter-spacing: -0.01em;
     margin-bottom: 14px;
   }
@@ -85,17 +90,17 @@
   .fields {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 40px;
   }
 
-  label {
+  .field {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 7px;
+    gap: 8px;
   }
 
-  label textarea {
+  .field textarea {
     align-self: stretch;
   }
 
@@ -108,13 +113,14 @@
 
   .hint {
     margin-right: auto;
-    font-size: 12.5px;
+    font-size: var(--text-body);
     color: var(--ink-faint);
   }
 
   @media (max-width: 720px) {
     .fields {
       grid-template-columns: 1fr;
+      gap: 16px;
     }
   }
 </style>

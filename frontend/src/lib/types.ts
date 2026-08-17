@@ -18,17 +18,10 @@ export interface ImportResult {
 
 export interface ScoreResult {
   score: number;
-  summary: string;
 }
 
 export interface CompareResult {
   first: number;
   second: number;
   gap: number;
-  summary: string;
-}
-
-export interface Health {
-  status: string;
-  examples: number;
 }

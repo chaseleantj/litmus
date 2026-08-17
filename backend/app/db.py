@@ -19,7 +19,10 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    """Naive UTC. SQLite stores no offset whatever the column type says, so the
+    storage contract is "always UTC, never stamped" and the offset is put back
+    at the API edge (ExampleOut in main.py)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Base(DeclarativeBase):

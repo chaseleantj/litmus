@@ -92,7 +92,9 @@ def run_dev(open_browser: bool) -> None:
         ).start()
     print(f"Dev server on {url}  (Ctrl+C to stop)")
     try:
-        subprocess.run([NPM, "run", "dev"], cwd=FRONTEND)
+        # Pass the port through rather than trusting vite.config.ts to agree
+        # with DEV_PORT — otherwise the browser opens on the wrong one.
+        subprocess.run([NPM, "run", "dev", "--", "--port", str(DEV_PORT)], cwd=FRONTEND)
     finally:
         backend.terminate()
 

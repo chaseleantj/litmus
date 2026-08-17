@@ -1,4 +1,4 @@
-import json
+from datetime import datetime
 
 from app.db import Example, SessionLocal
 
@@ -85,18 +85,27 @@ def test_import_appends_and_skips_duplicates(client):
     assert r.json() == {"imported": 1, "total": 2}
 
 
-def test_export_format(client):
-    clear_examples()
-    add(client, "ai one", "human one")
-    add(client, "ai two", "human two")
-    r = client.get("/api/examples/export")
-    assert r.status_code == 200
-    assert r.headers["content-disposition"] == "attachment; filename=examples.json"
-    data = json.loads(r.content.decode("utf-8"))
-    assert data == [
-        {"ai": "ai one", "human": "human one"},
-        {"ai": "ai two", "human": "human two"},
-    ]
+def test_identical_versions_rejected(client):
+    """A pair whose two versions match contributes no direction to learn."""
+    r = client.post("/api/examples", json={"ai": "same words", "human": " same words "})
+    assert r.status_code == 422
+    assert "detail" in r.json()
+
+
+def test_overlong_text_rejected(client):
+    from app.main import MAX_TEXT_CHARS
+
+    r = client.post("/api/examples", json={"ai": "x" * (MAX_TEXT_CHARS + 1), "human": "ok"})
+    assert r.status_code == 422
+
+
+def test_timestamps_are_utc_aware(client):
+    """Naive UTC in storage, offset-stamped at the edge — otherwise clients
+    parse the value as local time and can show the wrong day."""
+    created = add(client, "stamp ai", "stamp human")
+    parsed = datetime.fromisoformat(created["created_at"])
+    assert parsed.tzinfo is not None
+    assert parsed.utcoffset().total_seconds() == 0
 
 
 # --- Compare -----------------------------------------------------------------
@@ -118,20 +127,15 @@ def test_compare_validation(client, fake_embed):
 def test_compare_identical_short_circuits(client, fake_embed):
     r = client.post("/api/compare", json={"first": " same ", "second": "same"})
     assert r.status_code == 200
-    assert r.json() == {
-        "first": 0.0,
-        "second": 0.0,
-        "gap": 0.0,
-        "summary": "The two texts are identical.",
-    }
+    assert r.json() == {"first": 0.0, "second": 0.0, "gap": 0.0}
     assert fake_embed.calls == 0  # no embedding call at all
 
 
-def test_compare_returns_scores_and_summary(client, fake_embed):
+def test_compare_returns_scores(client, fake_embed):
     r = client.post("/api/compare", json={"first": "hello there", "second": "general kenobi"})
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"first", "second", "gap", "summary"}
+    assert set(body) == {"first", "second", "gap"}
     assert abs(body["gap"] - (body["second"] - body["first"])) < 1e-9
     # one call to learn the direction, one for the two compared texts
     assert fake_embed.calls == 2
@@ -176,13 +180,12 @@ def test_score_validation(client, fake_embed):
     assert r.status_code == 422
 
 
-def test_score_returns_score_and_summary(client, fake_embed):
+def test_score_returns_score(client, fake_embed):
     r = client.post("/api/score", json={"text": "hello there"})
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"score", "summary"}
+    assert set(body) == {"score"}
     assert isinstance(body["score"], float)
-    assert body["summary"]
     # one call to learn the direction, one for the scored text
     assert fake_embed.calls == 2
 
@@ -215,3 +218,16 @@ def test_compare_provider_failure_is_502(client, monkeypatch):
     r = client.post("/api/compare", json={"first": "aaa", "second": "bbb"})
     assert r.status_code == 502
     assert r.json() == {"detail": "provider down"}
+
+
+def test_unusable_pairs_are_409(client, fake_embed, monkeypatch):
+    """A library that yields a zero direction must be an actionable 409, not a
+    ZeroDivisionError 500. Reaching it needs a write that bypasses validation."""
+    clear_examples()
+    with SessionLocal() as db:
+        db.add(Example(ai="identical", human="identical"))
+        db.add(Example(ai="also same", human="also same"))
+        db.commit()
+    r = client.post("/api/score", json={"text": "hello"})
+    assert r.status_code == 409
+    assert "differ" in r.json()["detail"]

@@ -1,14 +1,14 @@
 """Litmus backend: examples CRUD + style comparison."""
 
 import json
-from contextlib import asynccontextmanager
-from datetime import datetime
+import threading
+from contextlib import asynccontextmanager, contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Response
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from sqlalchemy.orm import Session
 
 from . import scoring
@@ -17,6 +17,15 @@ from .db import DirectionCache, Example, SessionLocal, init_db
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SEED_FILE = REPO_ROOT / "examples.json"
 FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
+
+# Scoring needs a direction, and a direction needs at least this many pairs.
+# The frontend gates its UI on the same number (frontend/src/lib/library.svelte.ts).
+MIN_EXAMPLES = 2
+
+# Upper bound on a single text. The embedding model tops out at 8192 tokens per
+# input; this sits well under that so an over-long paste is a clear 422 here
+# rather than an opaque provider error two calls later.
+MAX_TEXT_CHARS = 20_000
 
 
 def seed_if_empty() -> None:
@@ -45,13 +54,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 def get_db():
     db = SessionLocal()
@@ -63,6 +65,15 @@ def get_db():
 
 # --- Schemas ---------------------------------------------------------------
 
+# One owner for what counts as a scorable text, shared by every endpoint that
+# accepts one.
+def valid_text(v: str) -> str:
+    if not v or not v.strip():
+        raise ValueError("must be a non-empty text")
+    if len(v) > MAX_TEXT_CHARS:
+        raise ValueError(f"must be at most {MAX_TEXT_CHARS:,} characters")
+    return v
+
 
 class ExampleIn(BaseModel):
     ai: str
@@ -71,9 +82,15 @@ class ExampleIn(BaseModel):
     @field_validator("ai", "human")
     @classmethod
     def non_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("must be a non-empty text")
-        return v
+        return valid_text(v)
+
+    @model_validator(mode="after")
+    def versions_differ(self):
+        # Two identical versions contribute a zero step, and a library of only
+        # those leaves no direction to learn (scoring.learn_direction).
+        if self.ai.strip() == self.human.strip():
+            raise ValueError("the AI version and your version must differ")
+        return self
 
 
 class ExampleOut(BaseModel):
@@ -85,6 +102,13 @@ class ExampleOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_validator("created_at", "updated_at")
+    @classmethod
+    def stamp_utc(cls, v: datetime) -> datetime:
+        # Timestamps are stored naive UTC (db.utcnow); the offset goes back on
+        # here so clients parse an instant, not a local wall-clock time.
+        return v.replace(tzinfo=timezone.utc) if v.tzinfo is None else v
+
 
 class CompareIn(BaseModel):
     first: str
@@ -93,16 +117,13 @@ class CompareIn(BaseModel):
     @field_validator("first", "second")
     @classmethod
     def non_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("must be a non-empty text")
-        return v
+        return valid_text(v)
 
 
 class CompareOut(BaseModel):
     first: float
     second: float
     gap: float
-    summary: str
 
 
 class ScoreIn(BaseModel):
@@ -111,14 +132,11 @@ class ScoreIn(BaseModel):
     @field_validator("text")
     @classmethod
     def non_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("must be a non-empty text")
-        return v
+        return valid_text(v)
 
 
 class ScoreOut(BaseModel):
     score: float
-    summary: str
 
 
 # --- Examples CRUD ---------------------------------------------------------
@@ -176,17 +194,13 @@ def import_examples(body: list[ExampleIn], db: Session = Depends(get_db)):
     return {"imported": imported, "total": db.query(Example).count()}
 
 
-@app.get("/api/examples/export")
-def export_examples(db: Session = Depends(get_db)):
-    pairs = [{"ai": r.ai, "human": r.human} for r in ordered_examples(db)]
-    return Response(
-        content=json.dumps(pairs, ensure_ascii=False, indent=2),
-        media_type="application/json",
-        headers={"Content-Disposition": "attachment; filename=examples.json"},
-    )
-
-
 # --- Compare ---------------------------------------------------------------
+
+
+# Learning a direction is a multi-second call that every request would
+# otherwise repeat while the first one is still in flight (these endpoints run
+# on a threadpool). One at a time: the losers find the cache warm.
+_direction_lock = threading.Lock()
 
 
 def get_direction(db: Session, api_key: str) -> dict:
@@ -194,40 +208,58 @@ def get_direction(db: Session, api_key: str) -> dict:
     the current example texts, so any change to examples causes a recompute."""
     pairs = [(r.ai, r.human) for r in ordered_examples(db)]
     key = scoring.direction_key(pairs)
-    cached = db.get(DirectionCache, key)
-    if cached is not None:
-        return json.loads(cached.unit_json)
-    direction = scoring.learn_direction(pairs, api_key)
-    db.query(DirectionCache).delete()
-    db.add(DirectionCache(key=key, unit_json=json.dumps(direction)))
-    db.commit()
-    return direction
+    with _direction_lock:
+        cached = db.get(DirectionCache, key)
+        if cached is not None:
+            return json.loads(cached.unit_json)
+        direction = scoring.learn_direction(pairs, api_key)
+        db.query(DirectionCache).delete()
+        db.add(DirectionCache(key=key, unit_json=json.dumps(direction)))
+        db.commit()
+        return direction
+
+
+@contextmanager
+def scoring_errors():
+    """One mapping from scoring failures to responses: too few or unusable
+    pairs are things the user fixes in the library (409), a provider failure
+    is not (502)."""
+    try:
+        yield
+    except scoring.DirectionError as exc:
+        raise HTTPException(409, detail=str(exc))
+    except scoring.EmbeddingError as exc:
+        raise HTTPException(502, detail=str(exc))
+
+
+def require_calibrated(db: Session) -> None:
+    if db.query(Example).count() < MIN_EXAMPLES:
+        raise HTTPException(409, detail=f"Need at least {MIN_EXAMPLES} examples")
+
+
+def api_key_and_direction(db: Session) -> tuple[str, dict]:
+    require_calibrated(db)
+    with scoring_errors():
+        api_key = scoring.load_api_key()
+        return api_key, get_direction(db, api_key)
 
 
 @app.post("/api/compare", response_model=CompareOut)
 def compare_texts(body: CompareIn, db: Session = Depends(get_db)):
-    if db.query(Example).count() < 2:
-        raise HTTPException(409, detail="Need at least 2 examples")
+    require_calibrated(db)
+    # Identical texts score identically by definition — no direction needed.
     if body.first.strip() == body.second.strip():
         return scoring.compare(body.first, body.second, None, "")
-    try:
-        api_key = scoring.load_api_key()
-        direction = get_direction(db, api_key)
+    api_key, direction = api_key_and_direction(db)
+    with scoring_errors():
         return scoring.compare(body.first, body.second, direction, api_key)
-    except scoring.EmbeddingError as exc:
-        raise HTTPException(502, detail=str(exc))
 
 
 @app.post("/api/score", response_model=ScoreOut)
 def score_text(body: ScoreIn, db: Session = Depends(get_db)):
-    if db.query(Example).count() < 2:
-        raise HTTPException(409, detail="Need at least 2 examples")
-    try:
-        api_key = scoring.load_api_key()
-        direction = get_direction(db, api_key)
+    api_key, direction = api_key_and_direction(db)
+    with scoring_errors():
         return scoring.score_one(body.text, direction, api_key)
-    except scoring.EmbeddingError as exc:
-        raise HTTPException(502, detail=str(exc))
 
 
 @app.get("/api/health")

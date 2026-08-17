@@ -1,8 +1,9 @@
 import type { CompareResult, ScoreResult } from "./types";
 
 /**
- * Detect-view state lives at module level so it survives tab switches.
- * Page reloads start fresh (blank, single mode) — no localStorage drafts.
+ * Detect-view state lives at module level so drafts and the current result
+ * survive the library sheet opening over them. Page reloads start fresh
+ * (blank, single mode) — no localStorage drafts.
  */
 
 export const compareState = $state({

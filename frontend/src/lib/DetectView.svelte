@@ -1,19 +1,21 @@
 <script lang="ts">
-  import { ArrowsLeftRight, Check, Columns, Shuffle, X } from "phosphor-svelte";
+  import { ArrowsLeftRight, Check, Shuffle } from "phosphor-svelte";
   import { api, ApiError } from "./api";
   import { compareState as cs } from "./compareState.svelte";
+  import { addPair, library, MIN_PAIRS } from "./library.svelte";
   import { toast } from "./toast";
 
   interface Props {
-    onGoExamples: () => void;
+    onOpenLibrary: () => void;
+    /** True while the library sheet is open: global shortcuts stand down. */
+    suspended: boolean;
   }
 
-  let { onGoExamples }: Props = $props();
+  let { onOpenLibrary, suspended }: Props = $props();
 
   let scoring = $state(false);
   let stale = $state(false);
   let error = $state<{ status: number; message: string } | null>(null);
-  let loadingExample = $state(false);
 
   // "Save as training pair" flow: which text is the human version, and
   // whether the current result has already been saved.
@@ -21,13 +23,22 @@
   let savingPair = $state(false);
   let savedPair = $state(false);
 
-  // Interpretation thresholds (shared with the chart and the verdict copy).
+  // Interpretation thresholds (shared with the strip and the verdict copy).
   const TOO_CLOSE = 0.02;
   const CLEAR = 0.1;
 
   const pair = $derived(cs.mode === "pair");
+  // Derived from what was scored, not from what is currently typed: everything
+  // else in the result is keyed to cs.lastScored, and a result that described
+  // one thing while the verdict described another would be worse than stale.
   const identical = $derived(
-    pair && cs.first.trim().length > 0 && cs.first.trim() === cs.second.trim(),
+    pair && cs.lastScored !== null && cs.lastScored.a.trim() === cs.lastScored.b.trim(),
+  );
+
+  // Scoring is meaningless below MIN_PAIRS; while the library is still
+  // loading (or failed to load) the server stays the judge via its 409.
+  const calibrated = $derived(
+    library.loading || library.error !== null || library.examples.length >= MIN_PAIRS,
   );
 
   /**
@@ -41,34 +52,101 @@
     score: number;
     label: string | null;
     tier: "low" | "high";
+    /** Identical texts have no measured score to show — only a verdict. */
+    showValue: boolean;
   }
+
+  /** Within this much of an end, anchor a label's edge to its pin rather than
+   *  its center: it stays attached and cannot hang off the axis. */
+  const EDGE_ZONE = 15;
+
+  /** Two pins closer than this (in % of the scale) would hide each other. */
+  const PIN_OVERLAP = 3;
+
+  /** Clear space required between two labels sharing a row. */
+  const LABEL_GUTTER = 12;
+
+  let scaleEl = $state<HTMLElement>();
+  let tiered = $state(false);
+
+  /**
+   * Two labels only need two rows when they would actually collide, which
+   * depends on their rendered width — so it has to be measured. Positions are
+   * recomputed from the marker data rather than read off the DOM, because
+   * `left` is mid-transition for 420ms after every change.
+   */
+  $effect(() => {
+    const el = scaleEl;
+    const markers = chart?.markers;
+    if (!el || !markers || markers.length < 2) {
+      tiered = false;
+      return;
+    }
+    const measure = () => {
+      const labels = [...el.querySelectorAll<HTMLElement>(".pin-label")];
+      if (labels.length < 2) return;
+      const scaleWidth = el.clientWidth;
+      const extent = (i: number) => {
+        const center = (markers[i].pos / 100) * scaleWidth;
+        const width = labels[i].getBoundingClientRect().width;
+        if (markers[i].anchor === "start") return [center, center + width];
+        if (markers[i].anchor === "end") return [center - width, center];
+        return [center - width / 2, center + width / 2];
+      };
+      const [left, right] = [extent(0), extent(1)].sort((a, b) => a[0] - b[0]);
+      tiered = left[1] + LABEL_GUTTER > right[0];
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
 
   const chart = $derived.by(() => {
     let markers: Marker[];
     if (pair) {
       if (!cs.result) return null;
       markers = identical
-        ? [{ score: 0, label: null, tier: "low" }]
+        ? [{ score: 0, label: null, tier: "low", showValue: false }]
         : [
-            { score: cs.result.first, label: "First", tier: "high" },
-            { score: cs.result.second, label: "Second", tier: "low" },
+            { score: cs.result.first, label: "First", tier: "high", showValue: true },
+            { score: cs.result.second, label: "Second", tier: "low", showValue: true },
           ];
     } else {
       if (!cs.single) return null;
-      markers = [{ score: cs.single.score, label: null, tier: "low" }];
+      markers = [{ score: cs.single.score, label: null, tier: "low", showValue: true }];
     }
     const maxAbs = Math.max(...markers.map((m) => Math.abs(m.score)));
     const domain = DOMAINS.find((d) => d >= maxAbs * 1.05) ?? DOMAINS[DOMAINS.length - 1];
     const pos = (s: number) => (0.5 + Math.max(-1, Math.min(1, s / domain)) / 2) * 100;
     const side = (s: number) => (Math.abs(s) < TOO_CLOSE ? "" : s > 0 ? "side-human" : "side-ai");
+    const positions = markers.map((m) => pos(m.score));
+    // Near-identical scores put the pins on top of each other; nudge them off
+    // the strip's centerline in opposite directions so both stay visible.
+    const overlapping =
+      positions.length === 2 && Math.abs(positions[0] - positions[1]) < PIN_OVERLAP;
     return {
+      // The band marks scores near zero, which answers the single-text
+      // question. In pair mode the verdict is about the gap between two
+      // scores, so the same band there would contradict it.
+      band: pair ? null : { left: pos(-TOO_CLOSE), width: pos(TOO_CLOSE) - pos(-TOO_CLOSE) },
       ticks: [-domain, -domain / 2, 0, domain / 2, domain],
-      markers: markers.map((m) => ({ ...m, pos: pos(m.score), side: side(m.score) })),
+      markers: markers.map((m, i) => ({
+        ...m,
+        pos: positions[i],
+        anchor:
+          positions[i] < EDGE_ZONE ? "start" : positions[i] > 100 - EDGE_ZONE ? "end" : "",
+        split: overlapping ? (m.tier === "high" ? "split-up" : "split-down") : "",
+        side: side(m.score),
+      })),
     };
   });
 
   const tickLabel = (v: number) =>
     (v > 0 ? "+" : "") + String(parseFloat(v.toFixed(3)));
+
+  /** Signed score, three decimals: "+0.041", "-0.113", "0.000". */
+  const fmtScore = (s: number) => (s > 0 ? "+" : "") + s.toFixed(3);
 
   type Verdict =
     | { kind: "identical" }
@@ -146,10 +224,12 @@
       queueRun();
       return;
     }
-    stale = !upToDate();
+    // Without calibration there is no result to be stale against.
+    stale = calibrated && !upToDate();
   }
 
   function queueRun() {
+    if (!calibrated) return;
     if (!ready()) {
       clearResults();
       return;
@@ -185,8 +265,13 @@
       }
     } catch (err) {
       if (id !== requestId) return;
+      // The invariant is "lastScored is set iff a result for it exists"; keeping
+      // the old bookkeeping here would make upToDate() true with no result, and
+      // both Ctrl+Enter and "Try again" would refuse to re-run.
       cs.result = null;
       cs.single = null;
+      cs.lastScored = null;
+      cs.lastScoredSingle = null;
       error =
         err instanceof ApiError
           ? { status: err.status, message: err.message }
@@ -199,12 +284,13 @@
     }
   }
 
-  // Remounting after an Examples tab visit with dirty text: score again.
+  // If the component ever remounts with dirty text (e.g. HMR), score again.
   if (ready() && !upToDate()) {
     queueRun();
   }
 
   function setMode(mode: "single" | "pair") {
+    if (cs.mode === mode) return;
     cs.mode = mode;
     error = null;
     queueRun();
@@ -221,7 +307,6 @@
         first: cs.result.second,
         second: cs.result.first,
         gap: -cs.result.gap,
-        summary: cs.result.summary,
       };
       cs.lastScored = { a: cs.first, b: cs.second };
       saveHuman = saveHuman === "first" ? "second" : "first";
@@ -233,9 +318,11 @@
     setMode(pair ? "single" : "pair");
   }
 
-  // Score, toggle compare, and swap — available anywhere on this tab.
+  // Score, toggle compare, and swap — available anywhere while the library
+  // sheet is closed.
   $effect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (suspended) return;
       if (!(e.ctrlKey || e.metaKey)) return;
       if (e.key === "Enter") {
         e.preventDefault();
@@ -254,26 +341,20 @@
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  async function tryExample() {
-    loadingExample = true;
-    try {
-      const pairs = await api.listExamples();
-      if (pairs.length === 0) {
-        onGoExamples();
-        return;
-      }
-      const p = pairs[Math.floor(Math.random() * pairs.length)];
-      const flip = Math.random() < 0.5;
-      if (pair) {
-        cs.first = flip ? p.ai : p.human;
-        cs.second = flip ? p.human : p.ai;
-      } else {
-        cs.first = flip ? p.ai : p.human;
-      }
-      queueRun();
-    } finally {
-      loadingExample = false;
+  function tryExample() {
+    if (library.examples.length < MIN_PAIRS) {
+      onOpenLibrary();
+      return;
     }
+    const p = library.examples[Math.floor(Math.random() * library.examples.length)];
+    const flip = Math.random() < 0.5;
+    if (pair) {
+      cs.first = flip ? p.ai : p.human;
+      cs.second = flip ? p.human : p.ai;
+    } else {
+      cs.first = flip ? p.ai : p.human;
+    }
+    queueRun();
   }
 
   async function saveAsPair() {
@@ -282,7 +363,7 @@
     const ai = saveHuman === "first" ? cs.second : cs.first;
     savingPair = true;
     try {
-      await api.createExample({ ai, human });
+      await addPair({ ai, human });
       savedPair = true;
       toast("success", "Saved as a training pair.");
     } catch (err) {
@@ -296,11 +377,12 @@
 <section aria-label="Detect AI writing">
   <div class="inputs" class:pair>
     <div class="field">
-      <div class="field-head">
-        <label class="micro-label" for="det-t1">{pair ? "First text" : "Text"}</label>
-      </div>
+      {#if pair}
+        <label class="micro-label" for="det-t1">First text</label>
+      {/if}
       <textarea
         id="det-t1"
+        aria-label={pair ? undefined : "Text to score"}
         bind:value={cs.first}
         oninput={onInput}
         onpaste={onPaste}
@@ -309,17 +391,7 @@
     </div>
     {#if pair}
       <div class="field">
-        <div class="field-head">
-          <label class="micro-label" for="det-t2">Second text</label>
-          <button
-            class="icon-btn close-second"
-            aria-label="Back to a single text"
-            title="Back to a single text (Ctrl+\)"
-            onclick={() => setMode("single")}
-          >
-            <X size={14} />
-          </button>
-        </div>
+        <label class="micro-label" for="det-t2">Second text</label>
         <textarea
           id="det-t2"
           bind:value={cs.second}
@@ -333,6 +405,24 @@
 
   <div class="field-actions">
     <div class="actions-left">
+      <div class="seg" role="group" aria-label="Number of texts">
+        <button
+          class:active={!pair}
+          aria-pressed={!pair}
+          title="Score one text (Ctrl+\ toggles)"
+          onclick={() => setMode("single")}
+        >
+          One text
+        </button>
+        <button
+          class:active={pair}
+          aria-pressed={pair}
+          title="Compare two texts (Ctrl+\ toggles)"
+          onclick={() => setMode("pair")}
+        >
+          Compare two
+        </button>
+      </div>
       {#if pair}
         <button
           class="btn btn-ghost small"
@@ -343,41 +433,50 @@
           <ArrowsLeftRight size={14} />
           Swap
         </button>
-      {:else}
-        <button
-          class="btn btn-ghost small"
-          onclick={() => setMode("pair")}
-          title="Compare two texts (Ctrl+\)"
-        >
-          <Columns size={14} />
-          Compare two texts
-        </button>
       {/if}
     </div>
-    <button class="btn btn-ghost small" onclick={tryExample} disabled={loadingExample}>
-      {#if loadingExample}<span class="spinner spinner-dark"></span>{:else}<Shuffle size={14} />{/if}
+    <button
+      class="btn btn-ghost small"
+      onclick={tryExample}
+      disabled={library.loading}
+      title="Fill in a text from your training library"
+    >
+      <Shuffle size={14} />
       Try an example
     </button>
   </div>
 
-  {#if stale && !scoring}
+  {#if stale && !scoring && calibrated}
     <p class="rescore-hint" aria-live="polite">
       Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score
     </p>
   {/if}
 
-  <div class="result" class:stale aria-live="polite">
-    {#if error}
-      <div class="note" role="alert">
+  <div class="result" class:stale={stale && calibrated && !error} aria-live="polite">
+    {#if !calibrated}
+      <div class="panel-note">
+        <h3 class="serif">Teach it your voice first</h3>
+        <p>
+          Litmus scores writing against your own. Add
+          {library.examples.length === 1 ? "one more pair" : "two pairs"} — an AI draft and your
+          version of the same thing — and scoring unlocks.
+        </p>
+        <button class="btn btn-primary" onclick={onOpenLibrary}>
+          {library.examples.length === 1 ? "Add one more pair" : "Open the library"}
+        </button>
+      </div>
+    {:else if error}
+      <div class="panel-note" role="alert">
+        <h3 class="serif">Couldn’t score that</h3>
         <p class="error-text">{error.message}</p>
         {#if error.status === 409}
-          <button class="btn btn-primary small" onclick={onGoExamples}>Add training examples</button>
+          <button class="btn btn-primary" onclick={onOpenLibrary}>Add training pairs</button>
         {:else}
-          <button class="btn small" onclick={() => queueRun()}>Try again</button>
+          <button class="btn" onclick={() => queueRun()}>Try again</button>
         {/if}
       </div>
     {:else if chart && verdict}
-      <p class="verdict">
+      <p class="verdict serif">
         {#if verdict.kind === "identical"}
           You pasted the same text twice.
         {:else if verdict.kind === "tie"}
@@ -391,36 +490,50 @@
         {/if}
       </p>
 
-      <div class="chart">
-        <div class="plot">
-          <div class="baseline"></div>
+      <div class="chart" class:tiered>
+        <span class="micro-label pole pole-ai" aria-hidden="true">AI</span>
+        <div class="scale" bind:this={scaleEl}>
+          <div class="strip">
+            {#if chart.band}
+              <div
+                class="tie-band"
+                style="left: {chart.band.left}%; width: {chart.band.width}%"
+                title="Scores inside this band are too close to call"
+              ></div>
+            {/if}
+          </div>
           {#each chart.ticks as t, i (i)}
-            <div class="tick" class:zero={t === 0} style="left: {(i / (chart.ticks.length - 1)) * 100}%">
+            <div
+              class="tick"
+              class:zero={t === 0}
+              style="left: {(i / (chart.ticks.length - 1)) * 100}%"
+              aria-hidden="true"
+            >
               <span class="micro-label tick-num">{tickLabel(t)}</span>
             </div>
           {/each}
           {#each chart.markers as m, i (i)}
-            <span class="pin {m.side}" style="left: {m.pos}%">
-              {#if m.label}
-                <span class="micro-label pin-label {m.tier}">{m.label}</span>
-              {/if}
+            <span class="pin {m.side} {m.split}" style="left: {m.pos}%"></span>
+            <span
+              class="pin-label {tiered && m.tier === 'high' ? 'high' : 'low'} {m.anchor}"
+              style="left: {m.pos}%"
+            >
+              {#if m.label}<span class="micro-label pin-name">{m.label}</span>{/if}
+              {#if m.showValue}<span class="pin-value">{fmtScore(m.score)}</span>{/if}
             </span>
           {/each}
         </div>
-        <div class="axis">
-          <span class="micro-label axis-ai">More like AI</span>
-          <span class="micro-label axis-human">More human</span>
-        </div>
+        <span class="micro-label pole pole-human" aria-hidden="true">Human</span>
       </div>
 
       {#if pair && verdict.kind !== "identical"}
         <div class="result-foot">
           {#if savedPair}
-            <span class="saved-note"><Check size={14} weight="bold" /> Saved to examples</span>
+            <span class="saved-note"><Check size={14} weight="bold" /> Saved to your library</span>
           {:else}
             <span class="save">
-              <span class="save-label">Human:</span>
-              <span class="seg-mini" role="group" aria-label="Which text is the human version">
+              <span class="save-label">Human version:</span>
+              <span class="seg" role="group" aria-label="Which text is the human version">
                 <button class:active={saveHuman === "first"} onclick={() => (saveHuman = "first")}
                   >First</button
                 >
@@ -437,16 +550,19 @@
         </div>
       {/if}
     {:else if scoring}
-      <div class="chart loading-chart"><div class="skeleton"></div></div>
+      <div class="loading-strip">
+        <span class="sr-only">Scoring…</span>
+        <div class="skeleton" aria-hidden="true"></div>
+      </div>
     {:else}
-      <div class="note">
+      <div class="panel-note">
         <p>
           {#if pair}
-            Paste two pieces of writing and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score them.
-            The markers show where each one falls between AI and human.
+            Paste two pieces of writing and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to see which one
+            sounds more like you.
           {:else}
-            Paste a piece of writing and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score it. The
-            marker shows how human it sounds.
+            Paste a piece of writing and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to see where it
+            lands between AI and your voice.
           {/if}
         </p>
       </div>
@@ -458,7 +574,7 @@
   .inputs {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 18px;
   }
 
   .inputs.pair {
@@ -468,64 +584,88 @@
   .field {
     display: flex;
     flex-direction: column;
-    gap: 7px;
-  }
-
-  .field-head {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-height: 22px;
-  }
-
-  .close-second {
-    margin-left: auto;
-    width: 22px;
-    height: 22px;
-    color: var(--ink-secondary);
+    gap: 8px;
   }
 
   .field textarea {
-    min-height: 184px;
+    min-height: 200px;
   }
 
   .field-actions {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    /* flex-end + auto margin rather than space-between: when the row wraps on
+       narrow screens the trailing button stays right-aligned. */
+    justify-content: flex-end;
     gap: 12px;
-    margin-top: 8px;
+    margin-top: 10px;
   }
 
   .actions-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    margin-right: auto;
+  }
+
+  /* Segmented control: the mode switch and the save-flow picker. Sized to the
+     28px small-control height so it sits level with the buttons beside it. */
+  .seg {
+    display: inline-flex;
+    padding: 1px;
+    gap: 2px;
+    background: var(--surface-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+
+  .seg button {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    /* 24px is the WCAG 2.2 minimum target; the track stays 28px overall. */
+    height: 24px;
+    border: none;
+    background: none;
+    border-radius: var(--radius-xs);
+    padding: 0 11px;
+    font-size: var(--text-body);
+    /* Same weight in both states: the active half is marked by its raised
+       surface and darker ink, and a weight change would reflow the track. */
+    font-weight: 500;
+    line-height: 1;
+    color: var(--ink-secondary);
+    transition:
+      color var(--speed) var(--ease),
+      background var(--speed) var(--ease),
+      box-shadow var(--speed) var(--ease);
+  }
+
+  .seg button:hover:not(.active) {
+    color: var(--ink);
+  }
+
+  .seg button.active {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 2px hsl(var(--ink-hsl) / 0.08);
+  }
+
+  .seg button:focus-visible {
+    outline-offset: 1px;
   }
 
   .rescore-hint {
-    margin: 14px 0 0;
+    margin: 16px 0 0;
     text-align: center;
-    font-size: 12.5px;
+    font-size: var(--text-body);
     color: var(--ink-faint);
   }
 
-  kbd {
-    display: inline-block;
-    padding: 1px 5px;
-    font-family: inherit;
-    font-size: 11.5px;
-    font-weight: 500;
-    color: var(--ink-secondary);
-    background: var(--surface-muted);
-    border: 1px solid var(--border);
-    border-bottom-width: 2px;
-    border-radius: var(--radius-xs);
-  }
-
   .result {
-    margin-top: 26px;
-    padding-top: 24px;
+    max-width: 700px;
+    margin: 30px auto 0;
+    padding-top: 28px;
     border-top: 1px solid var(--border);
     transition: opacity 200ms var(--ease);
   }
@@ -535,9 +675,13 @@
   }
 
   .verdict {
-    font-size: 19px;
-    font-weight: 600;
-    letter-spacing: -0.015em;
+    font-family: var(--font-serif);
+    font-size: var(--text-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.35;
+    text-align: center;
+    text-wrap: balance;
   }
 
   .who.human {
@@ -548,40 +692,82 @@
     color: var(--ai);
   }
 
-  /* ---------- Chart: a plain scale with ticks ---------- */
+  /* ---------- The litmus strip ---------- */
   .chart {
-    margin-top: 10px;
-    padding: 50px 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 32px;
+    padding: 0 4px;
+    transition: margin-top var(--speed) var(--ease);
   }
 
-  .plot {
+  /* Room for the raised row, added only when a label actually uses it. */
+  .chart.tiered {
+    margin-top: 64px;
+  }
+
+  .pole {
+    flex-shrink: 0;
+    padding-bottom: 26px; /* optically center against strip + tick numbers */
+  }
+
+  .pole-ai {
+    color: var(--ai);
+  }
+
+  .pole-human {
+    color: var(--human);
+  }
+
+  .scale {
     position: relative;
-    height: 1px;
+    flex: 1;
+    padding-bottom: 26px;
   }
 
-  .baseline {
+  .strip {
+    position: relative;
+    height: 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ai) 52%, var(--surface)),
+      color-mix(in srgb, var(--ai) 14%, var(--surface)) 40%,
+      var(--surface) 50%,
+      color-mix(in srgb, var(--human) 14%, var(--surface)) 60%,
+      color-mix(in srgb, var(--human) 52%, var(--surface))
+    );
+    overflow: hidden;
+  }
+
+  /* The too-close-to-call zone: neutral paper, dashed edges. */
+  .tie-band {
     position: absolute;
-    inset: 0;
-    background: var(--border-strong);
+    top: 0;
+    bottom: 0;
+    background: var(--surface);
+    border-left: 1px dashed var(--border-strong);
+    border-right: 1px dashed var(--border-strong);
   }
 
   .tick {
     position: absolute;
-    top: 0;
+    top: 16px;
     width: 1px;
-    height: 7px;
+    height: 5px;
     background: var(--border-strong);
     transform: translateX(-0.5px);
   }
 
   .tick.zero {
-    height: 11px;
     background: var(--ink-faint);
   }
 
   .tick-num {
     position: absolute;
-    top: 15px;
+    top: 7px;
     left: 50%;
     transform: translateX(-50%);
     color: var(--ink-faint);
@@ -589,16 +775,16 @@
 
   .pin {
     position: absolute;
-    top: 0;
-    width: 13px;
-    height: 13px;
+    top: 7px; /* strip center: 12px strip + 1px borders */
+    width: 15px;
+    height: 15px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
     background: var(--ink-secondary);
-    border: 2px solid var(--surface);
-    box-shadow: 0 1px 4px hsl(222 47% 11% / 0.25);
+    border: 2.5px solid var(--surface);
+    box-shadow: 0 1px 4px hsl(var(--ink-hsl) / 0.3);
     transition:
-      left 420ms var(--ease),
+      left var(--speed-slow) var(--ease),
       background 200ms var(--ease);
   }
 
@@ -610,34 +796,55 @@
     background: var(--human);
   }
 
+  /* Coincident scores: straddle the strip so both dots stay readable. */
+  .pin.split-up {
+    top: 0;
+  }
+
+  .pin.split-down {
+    top: 14px;
+  }
+
   .pin-label {
     position: absolute;
-    left: 50%;
     transform: translateX(-50%);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
     white-space: nowrap;
-    color: var(--ink-2);
+    transition: left var(--speed-slow) var(--ease);
+  }
+
+  /* Near an end there is no room to center on the pin, so the label hangs from
+     the pin's side instead — still attached, never off the axis. */
+  .pin-label.start {
+    transform: translateX(0);
+  }
+
+  .pin-label.end {
+    transform: translateX(-100%);
   }
 
   .pin-label.low {
-    bottom: calc(100% + 8px);
+    bottom: calc(100% + 12px);
   }
 
+  /* 24px of clearance: the tiers were within a pixel of touching at 18px. */
   .pin-label.high {
-    bottom: calc(100% + 24px);
+    bottom: calc(100% + 36px);
   }
 
-  .axis {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 44px;
+  /* The value is the measurement, the name is scaffolding — so the number
+     carries the weight and the label recedes to the axis's own colour. */
+  .pin-name {
+    font-weight: 500;
+    color: var(--ink-faint);
   }
 
-  .axis-ai {
-    color: var(--ai);
-  }
-
-  .axis-human {
-    color: var(--human);
+  .pin-value {
+    font-size: var(--text-micro);
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
   }
 
   /* ---------- Result footer ---------- */
@@ -645,109 +852,61 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    /* Holds the row's height when the save controls become a one-line note. */
+    min-height: 28px;
     gap: 14px;
     flex-wrap: wrap;
-    margin-top: 20px;
-    padding-top: 14px;
+    margin-top: 32px;
+    padding-top: 16px;
     border-top: 1px solid var(--border);
   }
 
   .save {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 9px;
+    flex-wrap: wrap;
   }
 
   .save-label {
-    font-size: 12.5px;
-    color: var(--ink-faint);
-  }
-
-  .seg-mini {
-    display: flex;
-    padding: 2px;
-    gap: 2px;
-    background: var(--surface-muted);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-  }
-
-  .seg-mini button {
-    appearance: none;
-    border: none;
-    background: none;
-    border-radius: var(--radius-xs);
-    padding: 2px 10px;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: var(--text-body);
     color: var(--ink-secondary);
-    transition:
-      color var(--speed) var(--ease),
-      background var(--speed) var(--ease);
-  }
-
-  .seg-mini button.active {
-    background: color-mix(in srgb, var(--brand-soft) 60%, transparent);
-    color: hsl(217 91% 45%);
-  }
-
-  .seg-mini button:focus-visible {
-    outline-offset: 1px;
   }
 
   .saved-note {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12.5px;
+    font-size: var(--text-body);
     font-weight: 500;
     color: var(--ink-secondary);
   }
 
   /* ---------- Notes & states ---------- */
-  .note {
-    padding: 26px 0 22px;
-    text-align: center;
+  /* The panel itself is shared (app.css); the result column owns its spacing,
+     which is tighter than in a card because the rule above already separates. */
+  .result :global(.panel-note) {
+    padding: 20px 0 16px;
   }
 
-  .note p {
-    margin: 0 auto;
-    max-width: 46ch;
-    color: var(--ink-secondary);
-    font-size: 13.5px;
+  .loading-strip {
+    padding: 74px 22px 46px;
   }
 
-  .note .error-text {
-    color: var(--danger);
-    margin-bottom: 14px;
-  }
-
-  .loading-chart {
-    padding-top: 6px;
-  }
-
+  /* Stands in for the litmus strip while scoring: same shape, no reading. */
   .skeleton {
-    height: 10px;
+    height: 12px;
+    border: 1px solid var(--border);
     border-radius: 999px;
-    margin-top: 24px;
-    background: hsl(220 14% 93%);
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    .skeleton {
-      animation: pulse 1.3s ease-in-out infinite;
-    }
-  }
-
-  @keyframes pulse {
-    50% {
-      opacity: 0.5;
-    }
   }
 
   @media (max-width: 760px) {
     .inputs.pair {
       grid-template-columns: 1fr;
+    }
+
+    .field-actions {
+      flex-wrap: wrap;
     }
   }
 </style>

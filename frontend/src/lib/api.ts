@@ -1,6 +1,6 @@
 import { writable } from "svelte/store";
 import { ApiError } from "./errors";
-import type { CompareResult, Example, Health, ImportResult, PairInput, ScoreResult } from "./types";
+import type { CompareResult, Example, ImportResult, PairInput, ScoreResult } from "./types";
 
 export { ApiError };
 
@@ -19,6 +19,30 @@ async function getMock(): Promise<MockHandler> {
   mockOn = true;
   mockActive.set(true);
   return mockHandler;
+}
+
+/**
+ * The message to show for a failed response. FastAPI reports its own errors as
+ * a `detail` string, but validation failures arrive as a list of field errors —
+ * without this they would all surface as "Request failed (422)".
+ */
+async function errorDetail(res: Response): Promise<string> {
+  try {
+    const detail = (await res.json())?.detail;
+    if (typeof detail === "string") return detail;
+    const first = Array.isArray(detail) ? detail[0] : null;
+    if (typeof first?.msg === "string") {
+      const msg = first.msg.replace(/^Value error, /, "");
+      // Field errors name the field ("ai", "text"); whole-body errors don't.
+      const field = first.loc?.[first.loc.length - 1];
+      return typeof field === "string" && field !== "body"
+        ? `The "${field}" field ${msg}.`
+        : msg[0].toUpperCase() + msg.slice(1) + ".";
+    }
+  } catch {
+    /* non-JSON error body; fall through to the generic message */
+  }
+  return `Request failed (${res.status})`;
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -53,14 +77,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
 
   if (!res.ok) {
-    let detail = `Request failed (${res.status})`;
-    try {
-      const data = await res.json();
-      if (typeof data?.detail === "string") detail = data.detail;
-    } catch {
-      /* non-JSON error body; keep generic message */
-    }
-    throw new ApiError(res.status, detail);
+    throw new ApiError(res.status, await errorDetail(res));
   }
 
   if (res.status === 204) return undefined as T;
@@ -68,7 +85,6 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 export const api = {
-  health: () => request<Health>("GET", "/api/health"),
   listExamples: () => request<Example[]>("GET", "/api/examples"),
   createExample: (pair: PairInput) => request<Example>("POST", "/api/examples", pair),
   updateExample: (id: number, pair: PairInput) =>
@@ -76,7 +92,6 @@ export const api = {
   deleteExample: (id: number) => request<void>("DELETE", `/api/examples/${id}`),
   importExamples: (pairs: PairInput[]) =>
     request<ImportResult>("POST", "/api/examples/import", pairs),
-  exportExamples: () => request<PairInput[]>("GET", "/api/examples/export"),
   compare: (first: string, second: string) =>
     request<CompareResult>("POST", "/api/compare", { first, second }),
   score: (text: string) => request<ScoreResult>("POST", "/api/score", { text }),
