@@ -208,6 +208,92 @@ def test_scores_are_centered_on_the_class_midpoint(client, fake_embed):
     assert abs(mean_human + mean_ai) < 1e-9
 
 
+# --- Analyze (sentence-level) --------------------------------------------------
+
+
+def test_analyze_needs_two_examples(client, fake_embed):
+    clear_examples()
+    add(client)
+    r = client.post("/api/analyze", json={"text": "hello there my friend"})
+    assert r.status_code == 409
+
+
+def test_analyze_validation(client, fake_embed):
+    r = client.post("/api/analyze", json={"text": "   "})
+    assert r.status_code == 422
+
+
+def test_analyze_returns_spans_and_doc_scores(client, fake_embed):
+    text = (
+        "First sentence is long enough. Second sentence also carries on! "
+        "Third one rounds it out nicely."
+    )
+    r = client.post("/api/analyze", json={"text": text})
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body) == {"sentences", "proj_score", "match_score"}
+    assert len(body["sentences"]) == 3
+    # Spans index into the original text, in order and non-overlapping.
+    prev_end = 0
+    for s in body["sentences"]:
+        assert prev_end <= s["start"] < s["end"] <= len(text)
+        prev_end = s["end"]
+    assert text[body["sentences"][1]["start"] : body["sentences"][1]["end"]] == (
+        "Second sentence also carries on!"
+    )
+    # Below 5 sentences the trimmed mean is the plain mean.
+    projs = [s["proj"] for s in body["sentences"]]
+    assert abs(body["proj_score"] - sum(projs) / len(projs)) < 1e-9
+
+
+def test_analyze_single_sentence_text(client, fake_embed):
+    r = client.post("/api/analyze", json={"text": "no sentence punctuation here at all"})
+    body = r.json()
+    assert len(body["sentences"]) == 1
+    assert body["proj_score"] == body["sentences"][0]["proj"]
+    assert body["match_score"] == body["sentences"][0]["match"]
+
+
+def test_analyze_merges_tiny_fragments(client, fake_embed):
+    r = client.post("/api/analyze", json={"text": "Hi. This longer sentence stands alone."})
+    assert len(r.json()["sentences"]) == 1
+
+
+def test_analyze_pools_and_direction_cached(client, fake_embed):
+    client.post("/api/analyze", json={"text": "One decent sentence here. Another one there."})
+    # direction + pools + the analyzed text's sentences
+    assert fake_embed.calls == 3
+    client.post("/api/analyze", json={"text": "A different text arrives now. Still two sentences."})
+    assert fake_embed.calls == 4  # only the new sentences embedded
+
+    # Library change invalidates both caches.
+    add(client, "fresh ai words", "fresh human words")
+    client.post("/api/analyze", json={"text": "Scored once more after the edit happened."})
+    assert fake_embed.calls == 7
+
+
+def test_analyze_provider_failure_is_502(client, monkeypatch):
+    from app import scoring
+
+    def boom(texts, api_key):
+        raise scoring.EmbeddingError("provider down")
+
+    monkeypatch.setattr(scoring, "embed", boom)
+    r = client.post("/api/analyze", json={"text": "hello there my friend"})
+    assert r.status_code == 502
+
+
+def test_sentence_spans_offsets_and_separator_handling():
+    from app.scoring import sentence_spans
+
+    text = 'He said "Go home now, please!" Then he left quietly.'
+    spans = sentence_spans(text)
+    assert [text[a:b] for a, b in spans] == [
+        'He said "Go home now, please!',
+        "Then he left quietly.",
+    ]
+
+
 def test_compare_provider_failure_is_502(client, monkeypatch):
     from app import scoring
 

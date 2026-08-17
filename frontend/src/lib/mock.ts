@@ -71,6 +71,33 @@ function score(text: string): number {
   return (h % 4000) / 10000 - 0.2;
 }
 
+/** Mirrors the backend's sentence splitter (scoring.sentence_spans): split
+ * after sentence punctuation, merge fragments under 15 chars. */
+function sentenceSpans(text: string): [number, number][] {
+  const MIN = 15;
+  const sep = /(?<=[.!?])[)"']*\s+/g;
+  const spans: [number, number][] = [];
+  let pos = 0;
+  const cuts = [...text.matchAll(sep), null];
+  for (const m of cuts) {
+    const end = m ? m.index : text.length;
+    const seg = text.slice(pos, end);
+    const start = pos + (seg.length - seg.trimStart().length);
+    const stop = end - (seg.length - seg.trimEnd().length);
+    pos = m ? m.index + m[0].length : end;
+    if (stop <= start) continue;
+    const last = spans[spans.length - 1];
+    if (last && (stop - start < MIN || last[1] - last[0] < MIN)) last[1] = stop;
+    else spans.push([start, stop]);
+  }
+  if (spans.length === 0) {
+    const stripped = text.trim();
+    const first = text.indexOf(stripped);
+    return [[first, first + stripped.length]];
+  }
+  return spans;
+}
+
 export async function handle(method: string, path: string, body: unknown): Promise<unknown> {
   await delay(250);
   const key = `${method} ${path}`;
@@ -110,6 +137,31 @@ export async function handle(method: string, path: string, body: unknown): Promi
     const a = score(first);
     const b = score(second);
     return { first: a, second: b, gap: b - a };
+  }
+
+  if (key === "POST /api/analyze") {
+    requireCalibrated();
+    await delay(1800); // slower than /api/score: many sentence embeddings
+    const text = (body as { text: string }).text;
+    const sentences = sentenceSpans(text).map(([start, end]) => ({
+      start,
+      end,
+      proj: score(text.slice(start, end)),
+      // A different deterministic stream so the two approaches disagree,
+      // like the real ones do.
+      match: score(`match:${text.slice(start, end)}`) / 2,
+    }));
+    const projs = sentences.map((s) => s.proj).sort((a, b) => a - b);
+    const trimmed = projs.length >= 5 ? projs.slice(1, -1) : projs;
+    const matches = sentences
+      .map((s) => s.match)
+      .sort((a, b) => Math.abs(b) - Math.abs(a))
+      .slice(0, 3);
+    return {
+      sentences,
+      proj_score: trimmed.reduce((a, b) => a + b, 0) / trimmed.length,
+      match_score: matches.reduce((a, b) => a + b, 0) / matches.length,
+    };
   }
 
   if (key === "POST /api/score") {

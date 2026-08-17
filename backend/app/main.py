@@ -12,7 +12,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from sqlalchemy.orm import Session
 
 from . import scoring
-from .db import DirectionCache, Example, SessionLocal, init_db
+from .db import DirectionCache, Example, SentencePoolCache, SessionLocal, init_db
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SEED_FILE = REPO_ROOT / "examples.json"
@@ -139,6 +139,22 @@ class ScoreOut(BaseModel):
     score: float
 
 
+class SentenceOut(BaseModel):
+    """One sentence of the analyzed text: character span into the original
+    text plus a score from each granular approach."""
+
+    start: int
+    end: int
+    proj: float
+    match: float
+
+
+class AnalyzeOut(BaseModel):
+    sentences: list[SentenceOut]
+    proj_score: float
+    match_score: float
+
+
 # --- Examples CRUD ---------------------------------------------------------
 
 
@@ -260,6 +276,39 @@ def score_text(body: ScoreIn, db: Session = Depends(get_db)):
     api_key, direction = api_key_and_direction(db)
     with scoring_errors():
         return scoring.score_one(body.text, direction, api_key)
+
+
+# Same rationale as _direction_lock: building the pools embeds every example
+# sentence, and concurrent misses would all pay that cost.
+_pools_lock = threading.Lock()
+
+
+def get_pools(db: Session, api_key: str) -> dict:
+    """Example-sentence embedding pools ({human, ai}), cached like the
+    direction and keyed by the same examples hash, so any library change
+    causes a recompute."""
+    pairs = [(r.ai, r.human) for r in ordered_examples(db)]
+    key = scoring.direction_key(pairs)
+    with _pools_lock:
+        cached = db.get(SentencePoolCache, key)
+        if cached is not None:
+            return json.loads(cached.pools_json)
+        pools = scoring.sentence_pools(pairs, api_key)
+        db.query(SentencePoolCache).delete()
+        db.add(SentencePoolCache(key=key, pools_json=json.dumps(pools)))
+        db.commit()
+        return pools
+
+
+@app.post("/api/analyze", response_model=AnalyzeOut)
+def analyze_text(body: ScoreIn, db: Session = Depends(get_db)):
+    """Sentence-level breakdown of one text under both granular approaches
+    (see scoring.analyze). Sits beside /api/score rather than inside it so a
+    failure here never takes the whole-text score down with it."""
+    api_key, direction = api_key_and_direction(db)
+    with scoring_errors():
+        pools = get_pools(db, api_key)
+        return scoring.analyze(body.text, direction, pools, api_key)
 
 
 @app.get("/api/health")

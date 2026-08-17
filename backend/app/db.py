@@ -48,5 +48,16 @@ class DirectionCache(Base):
     unit_json: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class SentencePoolCache(Base):
+    """Example-sentence embedding pools for the granular "match" scorer,
+    keyed by the same examples hash as DirectionCache so any change to the
+    library invalidates both together."""
+
+    __tablename__ = "sentence_pools"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    pools_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 def init_db() -> None:
     Base.metadata.create_all(engine)
