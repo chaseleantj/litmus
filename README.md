@@ -10,7 +10,7 @@ You use Litmus in a few simple steps. First, you paste in a text and get a score
 
 ![The training library of AI and human pairs](docs/screenshots/library.png)
 
-![The library laid out on a similarity map](docs/screenshots/map.png)
+![Library texts on the AI–human axis, with one of your versions hovered](docs/screenshots/axis.png)
 
 ## Quickstart
 
