@@ -8,34 +8,43 @@ import { MIN_PAIRS } from "./library.svelte";
 import type { Example, PairInput } from "./types";
 
 const now = () => new Date().toISOString();
+const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
 
-const seedPairs: PairInput[] = [
+/** `addedDaysAgo` backdates the seed row so the library histogram has a real
+ *  shape in dev: a couple of recent days, one last month, one further back. */
+const seedPairs: (PairInput & { addedDaysAgo: number })[] = [
   {
+    addedDaysAgo: 0,
     ai: "Before weighing in let me ground it against what CLAUDE.md actually locks in.",
     human:
       "Before giving you my opinion, let me first read CLAUDE.md to get a better understanding of the project.",
   },
   {
+    addedDaysAgo: 1,
     ai: "Retrieval runs as a multi-stage pipeline (src/ranking/pipeline.py). BM25 retrieves a candidate pool of 100 documents. Three further signals rescore that pool: lexical heuristics, dense embedding similarity, and link-graph authority. Combining them produces the top 10. Because BM25 is the only stage that retrieves anything and every later stage merely re-ranks, an unavailable external service costs the pipeline one signal rather than the whole query.",
     human:
       "We retrieve documents based on a multi-stage pipeline. First, BM25 retrieves a pool of 50 candidate documents. Then, these documents are reranked using a weighted average of three other signals: 1) lexical heuristics, 2) semantic similarity with embeddings, and 3) link authority, before being returned.",
   },
   {
+    addedDaysAgo: 1,
     ai: "The journey to a gem-quality crystal begins by creating a supersaturated solution, where heat controls the solubility of the salt. You will start by heating approximately 200 mL of distilled water to near-boiling, around 80°C. Gradually stir in the copper sulfate powder—usually around 80 to 100 grams—until no more can dissolve and a few granules begin settling at the bottom.",
     human:
       "To grow a high quality copper sulfate crystal, first you need to create a supersaturated solution. Start by heating 200 mL of distilled water to near-boiling. Then, add 80 grams of copper sulfate powder to the water and keep stirring to make it dissolve faster.",
   },
   {
+    addedDaysAgo: 4,
     ai: "I hope this message finds you well. I wanted to reach out to provide a quick update regarding the migration timeline. We have made significant progress on the database layer, and we remain on track to complete the remaining work by Friday. Please do not hesitate to reach out should you have any questions or concerns.",
     human:
       "Quick update on the migration: the database layer is done, and the rest should land by Friday. Ping me if anything looks off.",
   },
   {
+    addedDaysAgo: 12,
     ai: "This utility provides a comprehensive solution for parsing configuration files. It seamlessly handles YAML, JSON, and TOML formats, ensuring a robust and flexible experience for developers. To get started, simply install the package and import the parser module.",
     human:
       "Parses config files in YAML, JSON, or TOML. Install the package, import `parser`, and call `parser.load(path)` — it figures out the format from the file extension.",
   },
   {
+    addedDaysAgo: 45,
     ai: "Overall, the proposal is well-structured and demonstrates a clear understanding of the problem space. However, there are several areas that could benefit from further refinement. Firstly, the budget section would be strengthened by a detailed breakdown of costs. Additionally, the timeline appears somewhat optimistic given the overall scope.",
     human:
       "The proposal reads well and the problem framing makes sense. Two things to fix: the budget needs an actual cost breakdown, and the timeline feels optimistic for this scope — I'd add two weeks of buffer.",
@@ -45,9 +54,10 @@ const seedPairs: PairInput[] = [
 let nextId = 1;
 const examples: Example[] = seedPairs.map((p) => ({
   id: nextId++,
-  ...p,
-  created_at: now(),
-  updated_at: now(),
+  ai: p.ai,
+  human: p.human,
+  created_at: daysAgo(p.addedDaysAgo),
+  updated_at: daysAgo(p.addedDaysAgo),
 }));
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
