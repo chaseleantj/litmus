@@ -11,6 +11,7 @@
     MIN_PAIRS,
     updatePair,
   } from "./library.svelte";
+  import LibraryHistogram from "./LibraryHistogram.svelte";
   import PairEditor from "./PairEditor.svelte";
   import { toast } from "./toast";
   import type { PairInput } from "./types";
@@ -336,6 +337,10 @@
           </button>
         </div>
       </div>
+
+      {#if !library.loading && !library.error && count > 0}
+        <LibraryHistogram examples={library.examples} />
+      {/if}
 
       <!-- Above the editor as well as the list, so it labels both columns
            wherever they appear. -->
