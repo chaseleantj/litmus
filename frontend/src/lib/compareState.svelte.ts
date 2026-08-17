@@ -1,4 +1,4 @@
-import type { CompareResult, ScoreResult } from "./types";
+import type { AnalyzeResult, CompareResult, ScoreResult } from "./types";
 
 /**
  * Detect-view state lives at module level so drafts and the current result
@@ -14,4 +14,10 @@ export const compareState = $state({
   lastScored: null as { a: string; b: string } | null,
   single: null as ScoreResult | null,
   lastScoredSingle: null as string | null,
+  /** Sentence-level breakdown of the single text; loads alongside `single`
+   *  but fails independently, so the whole-text score never waits on it. */
+  analysis: null as AnalyzeResult | null,
+  lastAnalyzed: null as string | null,
+  /** Which granular approach the heatmap shows; survives the sheet opening. */
+  analysisView: "proj" as "proj" | "match" | "split",
 });

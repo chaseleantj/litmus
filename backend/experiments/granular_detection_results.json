@@ -1,0 +1,464 @@
+{
+  "model": "openai/text-embedding-3-small",
+  "dim": 1536,
+  "n_pairs": 10,
+  "protocol": "leave-one-pair-out (document level)",
+  "results": [
+    {
+      "approach": "whole-text (baseline)",
+      "aggregation": "-",
+      "auc": 0.82,
+      "d_prime": 1.3634060944059656,
+      "paired_accuracy": 1.0
+    },
+    {
+      "approach": "sent-proj",
+      "aggregation": "mean",
+      "auc": 0.81,
+      "d_prime": 1.2235854698116475,
+      "paired_accuracy": 1.0
+    },
+    {
+      "approach": "sent-proj",
+      "aggregation": "len-weighted",
+      "auc": 0.75,
+      "d_prime": 0.9166226762158348,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "sent-proj",
+      "aggregation": "trimmed",
+      "auc": 0.83,
+      "d_prime": 1.2671880521204941,
+      "paired_accuracy": 1.0
+    },
+    {
+      "approach": "sent-proj",
+      "aggregation": "median",
+      "auc": 0.78,
+      "d_prime": 1.0793950761941853,
+      "paired_accuracy": 1.0
+    },
+    {
+      "approach": "sent-proj",
+      "aggregation": "top3-extreme",
+      "auc": 0.77,
+      "d_prime": 1.044998507015011,
+      "paired_accuracy": 1.0
+    },
+    {
+      "approach": "sent-centroid",
+      "aggregation": "mean",
+      "auc": 0.8,
+      "d_prime": 1.0559124121567633,
+      "paired_accuracy": 1.0
+    },
+    {
+      "approach": "sent-centroid",
+      "aggregation": "len-weighted",
+      "auc": 0.71,
+      "d_prime": 0.8271651501368938,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "sent-centroid",
+      "aggregation": "trimmed",
+      "auc": 0.78,
+      "d_prime": 0.9909901912583527,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "sent-centroid",
+      "aggregation": "median",
+      "auc": 0.72,
+      "d_prime": 0.7854143824560659,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "sent-centroid",
+      "aggregation": "top3-extreme",
+      "auc": 0.76,
+      "d_prime": 0.8735066678400061,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "bertscore-max",
+      "aggregation": "mean",
+      "auc": 0.72,
+      "d_prime": 0.9394058213740938,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "bertscore-max",
+      "aggregation": "len-weighted",
+      "auc": 0.81,
+      "d_prime": 0.9894508142748768,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "bertscore-max",
+      "aggregation": "trimmed",
+      "auc": 0.74,
+      "d_prime": 1.0725316221414978,
+      "paired_accuracy": 0.8
+    },
+    {
+      "approach": "bertscore-max",
+      "aggregation": "median",
+      "auc": 0.81,
+      "d_prime": 1.0135661427894103,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "bertscore-max",
+      "aggregation": "top3-extreme",
+      "auc": 0.78,
+      "d_prime": 0.9666469124000182,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "bertscore-soft",
+      "aggregation": "mean",
+      "auc": 0.8,
+      "d_prime": 1.0986371923188396,
+      "paired_accuracy": 1.0
+    },
+    {
+      "approach": "bertscore-soft",
+      "aggregation": "len-weighted",
+      "auc": 0.8,
+      "d_prime": 1.1667890469449291,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "bertscore-soft",
+      "aggregation": "trimmed",
+      "auc": 0.81,
+      "d_prime": 1.1741468475906278,
+      "paired_accuracy": 1.0
+    },
+    {
+      "approach": "bertscore-soft",
+      "aggregation": "median",
+      "auc": 0.77,
+      "d_prime": 1.0293025972706364,
+      "paired_accuracy": 1.0
+    },
+    {
+      "approach": "bertscore-soft",
+      "aggregation": "top3-extreme",
+      "auc": 0.84,
+      "d_prime": 1.1721751614183382,
+      "paired_accuracy": 1.0
+    },
+    {
+      "approach": "knn",
+      "aggregation": "mean",
+      "auc": 0.68,
+      "d_prime": 0.6316930101364447,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "knn",
+      "aggregation": "len-weighted",
+      "auc": 0.69,
+      "d_prime": 0.6262486103160622,
+      "paired_accuracy": 0.8
+    },
+    {
+      "approach": "knn",
+      "aggregation": "trimmed",
+      "auc": 0.67,
+      "d_prime": 0.5495347276246884,
+      "paired_accuracy": 0.9
+    },
+    {
+      "approach": "knn",
+      "aggregation": "median",
+      "auc": 0.69,
+      "d_prime": 0.4280537038448654,
+      "paired_accuracy": 0.8
+    },
+    {
+      "approach": "knn",
+      "aggregation": "top3-extreme",
+      "auc": 0.64,
+      "d_prime": 0.5616940854595108,
+      "paired_accuracy": 0.8
+    },
+    {
+      "approach": "window-proj",
+      "aggregation": "mean",
+      "auc": 0.8,
+      "d_prime": 1.104905507490245,
+      "paired_accuracy": 1.0
+    },
+    {
+      "approach": "window-proj",
+      "aggregation": "len-weighted",
+      "auc": 0.8,
+      "d_prime": 1.12234306949629,
+      "paired_accuracy": 1.0
+    }
+  ],
+  "heatmap_samples": [
+    {
+      "method": "sent-proj",
+      "pair": 7,
+      "side": "ai",
+      "sentences": [
+        {
+          "text": "Two different costs, and only one of them is real.",
+          "score": -0.11835999232337922
+        },
+        {
+          "text": "Implementation: small.",
+          "score": -0.07979424137310086
+        },
+        {
+          "text": "The recommended version is roughly 25\u201335 lines across three files \u2014 a new resyncTo on FishSwimPresentation (six scalar assignments), a resetTo on FishSurfaceController that's an extraction of two lines already running in the constructor rather than new logic, and a two-line call site on the false\u2192true edge in SchoolingFish.setVisible.",
+          "score": -0.05627495301556121
+        },
+        {
+          "text": "The four-line facing-only variant is smaller still and touches one file.",
+          "score": -0.1071223620349054
+        },
+        {
+          "text": "Low risk either way: nothing changes for a fish that stays visible, so the steady-state render path is untouched.",
+          "score": -0.04227043293369498
+        },
+        {
+          "text": "Runtime, the resync itself: negligible.",
+          "score": -0.15166514521152907
+        },
+        {
+          "text": "It fires once per invisible\u2192visible transition per fish, not per frame, and the expensive part \u2014 setInitialSegments rebuilding the drag chain \u2014 costs about what one frame of that fish's normal spine solve costs.",
+          "score": -0.15943756797805075
+        },
+        {
+          "text": "So each appearance pays roughly one extra frame of its own work, once.",
+          "score": -0.15731050288927007
+        },
+        {
+          "text": "Even with a few dozen transitions per second across 300 fish, that's noise.",
+          "score": -0.0878168313556387
+        },
+        {
+          "text": "Runtime, the margin bump: this is the part that actually costs anything.",
+          "score": -0.17210195623751778
+        },
+        {
+          "text": "Raising viewportCulling.marginUnits from 1 to ~4 widens the band of fish that get a full-rate render every frame.",
+          "score": -0.033694902214239514
+        },
+        {
+          "text": "The cost scales with the added band area around the viewport, not with the margin directly \u2014 so it's a percentage of your current visible-fish count, and it's paid every frame forever, unlike the resync.",
+          "score": -0.10358215365076616
+        },
+        {
+          "text": "Whether that's 5% or 25% more rendered fish depends on your viewport dimensions in world units, which I'd want measured rather than guessed.",
+          "score": -0.01980242533606067
+        }
+      ]
+    },
+    {
+      "method": "sent-proj",
+      "pair": 7,
+      "side": "human",
+      "sentences": [
+        {
+          "text": "There are 2 different costs: code-wise, and performance-wise.",
+          "score": -0.10493251925148774
+        },
+        {
+          "text": "Code-wise, it's small.",
+          "score": -0.10506504917963248
+        },
+        {
+          "text": "The recommended version is roughly 25-35 lines across three files.",
+          "score": 0.03823144003668548
+        },
+        {
+          "text": "Performance-wise, the margin bump is the one worth looking at.",
+          "score": -0.0649724607717579
+        },
+        {
+          "text": "Raising viewportCulling.marginUnits from 1 to ~4 increases the number of fish that are rendered at full rate every frame.",
+          "score": -0.022757042161602355
+        },
+        {
+          "text": "The exact amount depends on the banded area around your viewport in world units.",
+          "score": -0.04119184589860639
+        },
+        {
+          "text": "I would measure this rather than guess.",
+          "score": -0.0793087317180133
+        },
+        {
+          "text": "Meanwhile, the resync itself is negligible.",
+          "score": -0.090907635452723
+        },
+        {
+          "text": "It fires once per invisible -> visible transition per fish.",
+          "score": -0.1078237480074002
+        },
+        {
+          "text": "Even with a few dozen transitions per second across 300 fish, that's noise.",
+          "score": -0.0878168313556387
+        }
+      ]
+    },
+    {
+      "method": "sent-proj",
+      "pair": 5,
+      "side": "ai",
+      "sentences": [
+        {
+          "text": "Three sessile organisms for Remora's rock and sediment: a bed of cylindrical seagrass blades, a crumpled translucent sheet alga, and a planar netted gorgonian.",
+          "score": -0.01858576396814738
+        },
+        {
+          "text": "Each is drawn in profile in its own attachment frame, root floating just above the frame edge, with no substrate \u2014 placement in the game supplies the rock.",
+          "score": -0.22838456453087536
+        },
+        {
+          "text": "All three sample one shared slow current and differ only in stiffness and lag: the thin blades answer first, the broad sheet lags, and the calcified fan barely moves.",
+          "score": -0.060204172862791824
+        },
+        {
+          "text": "Use the sliders to find a default for the entity definition; the very faint shape behind each specimen is its rest pose.",
+          "score": -0.08864276586899777
+        }
+      ]
+    },
+    {
+      "method": "bertscore-soft",
+      "pair": 7,
+      "side": "ai",
+      "sentences": [
+        {
+          "text": "Two different costs, and only one of them is real.",
+          "score": -0.04083516539803417
+        },
+        {
+          "text": "Implementation: small.",
+          "score": 0.060791067722844816
+        },
+        {
+          "text": "The recommended version is roughly 25\u201335 lines across three files \u2014 a new resyncTo on FishSwimPresentation (six scalar assignments), a resetTo on FishSurfaceController that's an extraction of two lines already running in the constructor rather than new logic, and a two-line call site on the false\u2192true edge in SchoolingFish.setVisible.",
+          "score": -0.13663525897911144
+        },
+        {
+          "text": "The four-line facing-only variant is smaller still and touches one file.",
+          "score": -0.013712653341006131
+        },
+        {
+          "text": "Low risk either way: nothing changes for a fish that stays visible, so the steady-state render path is untouched.",
+          "score": -0.03687778480169834
+        },
+        {
+          "text": "Runtime, the resync itself: negligible.",
+          "score": -0.044163446270129414
+        },
+        {
+          "text": "It fires once per invisible\u2192visible transition per fish, not per frame, and the expensive part \u2014 setInitialSegments rebuilding the drag chain \u2014 costs about what one frame of that fish's normal spine solve costs.",
+          "score": -0.09423823589929409
+        },
+        {
+          "text": "So each appearance pays roughly one extra frame of its own work, once.",
+          "score": -0.027155005502618013
+        },
+        {
+          "text": "Even with a few dozen transitions per second across 300 fish, that's noise.",
+          "score": -0.007913202003206415
+        },
+        {
+          "text": "Runtime, the margin bump: this is the part that actually costs anything.",
+          "score": 0.02963893068703155
+        },
+        {
+          "text": "Raising viewportCulling.marginUnits from 1 to ~4 widens the band of fish that get a full-rate render every frame.",
+          "score": 0.057446522804043054
+        },
+        {
+          "text": "The cost scales with the added band area around the viewport, not with the margin directly \u2014 so it's a percentage of your current visible-fish count, and it's paid every frame forever, unlike the resync.",
+          "score": -0.08219690981511685
+        },
+        {
+          "text": "Whether that's 5% or 25% more rendered fish depends on your viewport dimensions in world units, which I'd want measured rather than guessed.",
+          "score": -0.019208140821648373
+        }
+      ]
+    },
+    {
+      "method": "bertscore-soft",
+      "pair": 7,
+      "side": "human",
+      "sentences": [
+        {
+          "text": "There are 2 different costs: code-wise, and performance-wise.",
+          "score": 0.00521911379068013
+        },
+        {
+          "text": "Code-wise, it's small.",
+          "score": -0.004092174575281382
+        },
+        {
+          "text": "The recommended version is roughly 25-35 lines across three files.",
+          "score": -0.010931860318994513
+        },
+        {
+          "text": "Performance-wise, the margin bump is the one worth looking at.",
+          "score": 0.05291313901426742
+        },
+        {
+          "text": "Raising viewportCulling.marginUnits from 1 to ~4 increases the number of fish that are rendered at full rate every frame.",
+          "score": 0.10521705550805655
+        },
+        {
+          "text": "The exact amount depends on the banded area around your viewport in world units.",
+          "score": -0.017942868585833605
+        },
+        {
+          "text": "I would measure this rather than guess.",
+          "score": -0.052886347094825925
+        },
+        {
+          "text": "Meanwhile, the resync itself is negligible.",
+          "score": -0.02983408021315037
+        },
+        {
+          "text": "It fires once per invisible -> visible transition per fish.",
+          "score": -0.02147688380032664
+        },
+        {
+          "text": "Even with a few dozen transitions per second across 300 fish, that's noise.",
+          "score": -0.007913202003206415
+        }
+      ]
+    },
+    {
+      "method": "bertscore-soft",
+      "pair": 5,
+      "side": "ai",
+      "sentences": [
+        {
+          "text": "Three sessile organisms for Remora's rock and sediment: a bed of cylindrical seagrass blades, a crumpled translucent sheet alga, and a planar netted gorgonian.",
+          "score": -0.08443834943794357
+        },
+        {
+          "text": "Each is drawn in profile in its own attachment frame, root floating just above the frame edge, with no substrate \u2014 placement in the game supplies the rock.",
+          "score": -0.10680552861073495
+        },
+        {
+          "text": "All three sample one shared slow current and differ only in stiffness and lag: the thin blades answer first, the broad sheet lags, and the calcified fan barely moves.",
+          "score": -0.016282013656999605
+        },
+        {
+          "text": "Use the sliders to find a default for the entity definition; the very faint shape behind each specimen is its rest pose.",
+          "score": -0.021416856851171562
+        }
+      ]
+    }
+  ]
+}
