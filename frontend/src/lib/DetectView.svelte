@@ -1,10 +1,20 @@
 <script lang="ts">
   import { ArrowsLeftRight, Check, Shuffle } from "phosphor-svelte";
-  import { api, ApiError } from "./api";
-  import { compareState as cs } from "./compareState.svelte";
-  import { addPair, library, MIN_PAIRS } from "./library.svelte";
-  import { fmtScore, pickDomain, scalePos, tickLabel } from "./scale";
-  import { toast } from "./toast";
+  import {
+    clearResults,
+    compareState as cs,
+    markStale,
+    queueRun,
+    ready,
+    savePair,
+    setMode,
+    swap,
+    toggleMode,
+    upToDate,
+  } from "./compareState.svelte";
+  import ErrorPanel from "./ErrorPanel.svelte";
+  import { isCalibrated, library, MIN_PAIRS } from "./library.svelte";
+  import { fmtScore, pickDomain, scalePos, tickLabel, ticksFor } from "./scale";
 
   interface Props {
     onOpenLibrary: () => void;
@@ -13,16 +23,6 @@
   }
 
   let { onOpenLibrary, suspended }: Props = $props();
-
-  let scoring = $state(false);
-  let stale = $state(false);
-  let error = $state<{ status: number; message: string } | null>(null);
-
-  // "Save as training pair" flow: which text is the human version, and
-  // whether the current result has already been saved.
-  let saveHuman = $state<"first" | "second">("second");
-  let savingPair = $state(false);
-  let savedPair = $state(false);
 
   // Interpretation thresholds (shared with the strip and the verdict copy).
   const TOO_CLOSE = 0.02;
@@ -36,11 +36,7 @@
     pair && cs.lastScored !== null && cs.lastScored.a.trim() === cs.lastScored.b.trim(),
   );
 
-  // Scoring is meaningless below MIN_PAIRS; while the library is still
-  // loading (or failed to load) the server stays the judge via its 409.
-  const calibrated = $derived(
-    library.loading || library.error !== null || library.examples.length >= MIN_PAIRS,
-  );
+  const calibrated = $derived(isCalibrated());
 
   interface Marker {
     score: number;
@@ -124,7 +120,7 @@
       // question. In pair mode the verdict is about the gap between two
       // scores, so the same band there would contradict it.
       band: pair ? null : { left: pos(-TOO_CLOSE), width: pos(TOO_CLOSE) - pos(-TOO_CLOSE) },
-      ticks: [-domain, -domain / 2, 0, domain / 2, domain],
+      ticks: ticksFor(domain),
       markers: markers.map((m, i) => ({
         ...m,
         pos: positions[i],
@@ -163,34 +159,6 @@
     };
   });
 
-  // Typing only marks the result stale; scoring runs on Ctrl+Enter, paste
-  // into an empty box, or a programmatic trigger (swap, mode toggle,
-  // try-example). A counter makes sure a slow old answer can never overwrite
-  // a newer one.
-  let requestId = 0;
-
-  function clearResults() {
-    requestId++;
-    cs.lastScored = null;
-    cs.result = null;
-    cs.single = null;
-    cs.lastScoredSingle = null;
-    error = null;
-    stale = false;
-    scoring = false;
-  }
-
-  function upToDate(): boolean {
-    if (pair) {
-      return !!cs.lastScored && cs.lastScored.a === cs.first && cs.lastScored.b === cs.second;
-    }
-    return cs.lastScoredSingle === cs.first;
-  }
-
-  function ready(): boolean {
-    return !!(pair ? cs.first.trim() && cs.second.trim() : cs.first.trim());
-  }
-
   // Set in paste (value still pre-insert), consumed in the following input
   // once bind:value has caught up — microtasks alone race the bind.
   let pasteIntoEmpty = false;
@@ -212,98 +180,12 @@
       queueRun();
       return;
     }
-    // Without calibration there is no result to be stale against.
-    stale = calibrated && !upToDate();
-  }
-
-  function queueRun() {
-    if (!calibrated) return;
-    if (!ready()) {
-      clearResults();
-      return;
-    }
-    if (upToDate()) {
-      stale = false;
-      return;
-    }
-    stale = true;
-    run();
-  }
-
-  async function run() {
-    const wasPair = pair;
-    const a = cs.first,
-      b = cs.second;
-    const id = ++requestId;
-    scoring = true;
-    error = null;
-    try {
-      if (wasPair) {
-        const r = await api.compare(a, b);
-        if (id !== requestId) return;
-        cs.lastScored = { a, b };
-        cs.result = r;
-        savedPair = false;
-        saveHuman = r.gap >= 0 ? "second" : "first";
-      } else {
-        const r = await api.score(a);
-        if (id !== requestId) return;
-        cs.lastScoredSingle = a;
-        cs.single = r;
-      }
-    } catch (err) {
-      if (id !== requestId) return;
-      // The invariant is "lastScored is set iff a result for it exists"; keeping
-      // the old bookkeeping here would make upToDate() true with no result, and
-      // both Ctrl+Enter and "Try again" would refuse to re-run.
-      cs.result = null;
-      cs.single = null;
-      cs.lastScored = null;
-      cs.lastScoredSingle = null;
-      error =
-        err instanceof ApiError
-          ? { status: err.status, message: err.message }
-          : { status: 0, message: err instanceof Error ? err.message : "That did not work. Try again." };
-    } finally {
-      if (id === requestId) {
-        scoring = false;
-        stale = false;
-      }
-    }
+    markStale();
   }
 
   // If the component ever remounts with dirty text (e.g. HMR), score again.
   if (ready() && !upToDate()) {
     queueRun();
-  }
-
-  function setMode(mode: "single" | "pair") {
-    if (cs.mode === mode) return;
-    cs.mode = mode;
-    error = null;
-    queueRun();
-  }
-
-  function swap() {
-    if (!pair || (!cs.first.trim() && !cs.second.trim())) return;
-    const a = cs.first;
-    cs.first = cs.second;
-    cs.second = a;
-    if (cs.result && cs.lastScored && cs.lastScored.a === cs.second && cs.lastScored.b === cs.first) {
-      // The scores just trade places; no need to re-embed.
-      cs.result = {
-        first: cs.result.second,
-        second: cs.result.first,
-        gap: -cs.result.gap,
-      };
-      cs.lastScored = { a: cs.first, b: cs.second };
-      saveHuman = saveHuman === "first" ? "second" : "first";
-    }
-    queueRun();
-  }
-
-  function toggleMode() {
-    setMode(pair ? "single" : "pair");
   }
 
   // Score, toggle compare, and swap — available anywhere while the library
@@ -343,22 +225,6 @@
       cs.first = flip ? p.ai : p.human;
     }
     queueRun();
-  }
-
-  async function saveAsPair() {
-    if (savingPair || !cs.result) return;
-    const human = saveHuman === "first" ? cs.first : cs.second;
-    const ai = saveHuman === "first" ? cs.second : cs.first;
-    savingPair = true;
-    try {
-      await addPair({ ai, human });
-      savedPair = true;
-      toast("success", "Saved as a training pair.");
-    } catch (err) {
-      toast("error", err instanceof Error ? err.message : "Could not save the pair.");
-    } finally {
-      savingPair = false;
-    }
   }
 </script>
 
@@ -434,13 +300,13 @@
     </button>
   </div>
 
-  {#if stale && !scoring && calibrated}
+  {#if cs.stale && !cs.scoring && calibrated}
     <p class="rescore-hint" aria-live="polite">
       Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score
     </p>
   {/if}
 
-  <div class="result" class:stale={stale && calibrated && !error} aria-live="polite">
+  <div class="result" class:stale={cs.stale && calibrated && !cs.error} aria-live="polite">
     {#if !calibrated}
       <div class="panel-note">
         <h3 class="serif">Teach it your voice first</h3>
@@ -453,16 +319,13 @@
           {library.examples.length === 1 ? "Add one more pair" : "Open the library"}
         </button>
       </div>
-    {:else if error}
-      <div class="panel-note" role="alert">
-        <h3 class="serif">Couldn’t score that</h3>
-        <p class="error-text">{error.message}</p>
-        {#if error.status === 409}
-          <button class="btn btn-primary" onclick={onOpenLibrary}>Add training pairs</button>
-        {:else}
-          <button class="btn" onclick={() => queueRun()}>Try again</button>
-        {/if}
-      </div>
+    {:else if cs.error}
+      <ErrorPanel
+        heading="Couldn’t score that"
+        error={cs.error}
+        {onOpenLibrary}
+        onRetry={queueRun}
+      />
     {:else if chart && verdict}
       <p class="verdict serif">
         {#if verdict.kind === "identical"}
@@ -516,28 +379,30 @@
 
       {#if pair && verdict.kind !== "identical"}
         <div class="result-foot">
-          {#if savedPair}
+          {#if cs.savedPair}
             <span class="saved-note"><Check size={14} weight="bold" /> Saved to your library</span>
           {:else}
             <span class="save">
               <span class="save-label">Human version:</span>
               <span class="seg" role="group" aria-label="Which text is the human version">
-                <button class:active={saveHuman === "first"} onclick={() => (saveHuman = "first")}
-                  >First</button
+                <button
+                  class:active={cs.saveHuman === "first"}
+                  onclick={() => (cs.saveHuman = "first")}>First</button
                 >
-                <button class:active={saveHuman === "second"} onclick={() => (saveHuman = "second")}
-                  >Second</button
+                <button
+                  class:active={cs.saveHuman === "second"}
+                  onclick={() => (cs.saveHuman = "second")}>Second</button
                 >
               </span>
-              <button class="btn btn-primary small" onclick={saveAsPair} disabled={savingPair}>
-                {#if savingPair}<span class="spinner"></span>{/if}
+              <button class="btn btn-primary small" onclick={savePair} disabled={cs.savingPair}>
+                {#if cs.savingPair}<span class="spinner"></span>{/if}
                 Save as pair
               </button>
             </span>
           {/if}
         </div>
       {/if}
-    {:else if scoring}
+    {:else if cs.scoring}
       <div class="loading-strip">
         <span class="sr-only">Scoring…</span>
         <div class="skeleton" aria-hidden="true"></div>
@@ -685,26 +550,7 @@
     border-right: 1px dashed var(--border-strong);
   }
 
-  .tick {
-    position: absolute;
-    top: 16px;
-    width: 1px;
-    height: 5px;
-    background: var(--border-strong);
-    transform: translateX(-0.5px);
-  }
-
-  .tick.zero {
-    background: var(--ink-faint);
-  }
-
-  .tick-num {
-    position: absolute;
-    top: 7px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: var(--ink-faint);
-  }
+  /* .tick / .tick-num are shared with the map's axis view — see app.css. */
 
   .pin {
     position: absolute;

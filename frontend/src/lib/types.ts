@@ -1,3 +1,10 @@
+/**
+ * How much of a text a map point carries. The server is the authority and does
+ * the truncating (SNIPPET_CHARS in backend/app/main.py); this copy exists only
+ * so the dev mock produces the same payload. Keep them in step.
+ */
+export const SNIPPET_CHARS = 240;
+
 export interface Example {
   id: number;
   ai: string;

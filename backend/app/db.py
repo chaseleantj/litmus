@@ -7,7 +7,7 @@ from pathlib import Path
 from sqlalchemy import DateTime, Integer, String, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
-BACKEND_DIR = Path(__file__).resolve().parent.parent
+from .paths import BACKEND_DIR
 
 DB_PATH = Path(os.environ.get("APP_DB_PATH", BACKEND_DIR / "data" / "app.db"))
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -49,12 +49,15 @@ class DirectionCache(Base):
 
 
 class MapCache(Base):
-    """The computed map payload (scores + 2D layout), keyed by the example
-    texts exactly like DirectionCache — any library change recomputes it."""
+    """The computed map payload (scores + 2D layout), keyed by everything it
+    was computed from (scoring.map_key) — any library change, and any change
+    to how the payload is built, recomputes it."""
 
     __tablename__ = "map_cache"
 
     key: Mapped[str] = mapped_column(String, primary_key=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 def init_db() -> None:
     Base.metadata.create_all(engine)

@@ -27,9 +27,7 @@
 
   /* The two poles of the litmus scale */
   --ai: hsl(248 45% 50%);
-  --ai-soft: hsl(248 50% 93.5%);
   --human: hsl(19 72% 42%);
-  --human-soft: hsl(26 65% 92%);
 
   --danger: hsl(2 64% 45%);
   --danger-soft: hsl(6 60% 96%);
@@ -437,6 +435,30 @@ kbd {
     color-mix(in srgb, var(--human) 14%, var(--surface)) 60%,
     color-mix(in srgb, var(--human) 52%, var(--surface))
   );
+}
+
+/* The strip's tick ladder. Lives here with the strip: both scales must mark
+   the same places the same way, and the offsets below are measured from the
+   strip's own height. Consumers position each tick with `left`. */
+.tick {
+  position: absolute;
+  top: 16px;
+  width: 1px;
+  height: 5px;
+  background: var(--border-strong);
+  transform: translateX(-0.5px);
+}
+
+.tick.zero {
+  background: var(--ink-faint);
+}
+
+.tick-num {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--ink-faint);
 }
 
 /* Loading placeholder: the consumer sets the shape, this sets the shimmer. */

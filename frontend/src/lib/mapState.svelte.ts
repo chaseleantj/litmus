@@ -1,4 +1,5 @@
-import { api, ApiError } from "./api";
+import { api } from "./api";
+import { toErrorState, type ErrorState } from "./errors";
 import { library } from "./library.svelte";
 import type { MapResult } from "./types";
 
@@ -10,7 +11,7 @@ import type { MapResult } from "./types";
 export const mapState = $state({
   data: null as MapResult | null,
   loading: false,
-  error: null as { status: number; message: string } | null,
+  error: null as ErrorState | null,
   view: "map" as "map" | "axis",
   /** The library signature the current data was computed for. */
   loadedFor: null as string | null,
@@ -48,13 +49,7 @@ export async function loadMap(): Promise<void> {
     mapState.data = null;
     mapState.loadedFor = null;
     mapState.erroredFor = signature;
-    mapState.error =
-      err instanceof ApiError
-        ? { status: err.status, message: err.message }
-        : {
-            status: 0,
-            message: err instanceof Error ? err.message : "That did not work. Try again.",
-          };
+    mapState.error = toErrorState(err);
   } finally {
     if (id === requestId) mapState.loading = false;
   }

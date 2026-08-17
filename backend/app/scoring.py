@@ -1,17 +1,16 @@
-"""Embedding + style-direction logic, ported from compare.py."""
+"""Embedding + style-direction logic."""
 
 import hashlib
 import json
 import math
 import os
-from pathlib import Path
 
 import requests
 
+from .paths import REPO_ROOT
+
 MODEL = "openai/text-embedding-3-small"
 REQUEST_TIMEOUT = 30
-
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class EmbeddingError(RuntimeError):
@@ -74,6 +73,25 @@ def direction_key(examples: list[tuple[str, str]]) -> str:
     )
     return hashlib.sha256(
         ("centered-v2\n" + MODEL + "\n" + canonical).encode("utf-8")
+    ).hexdigest()
+
+
+def map_key(examples: list[tuple[str, str]], snippet_chars: int) -> str:
+    """Cache key for a map payload. The examples alone are not enough: the same
+    library laid out with different projection settings, or carrying different
+    snippet lengths, is a different picture — and a persisted cache would
+    otherwise serve the old one forever. snippet_chars is passed in because the
+    payload shape belongs to the API layer (main.SNIPPET_CHARS), not here."""
+    return hashlib.sha256(
+        "\n".join(
+            [
+                "map-v1",
+                direction_key(examples),
+                str(snippet_chars),
+                str(MIN_UMAP_POINTS),
+                json.dumps(UMAP_PARAMS, sort_keys=True, separators=(",", ":")),
+            ]
+        ).encode("utf-8")
     ).hexdigest()
 
 
@@ -148,6 +166,16 @@ def _pca_2d(vectors: list[list[float]]) -> list[list[float]]:
 # spectral machinery degenerates and PCA reads better anyway.
 MIN_UMAP_POINTS = 8
 
+# The layout knobs, named here rather than at the call site so map_key can hash
+# them: a picture computed under different settings must not be served from the
+# cache as if nothing changed.
+UMAP_PARAMS = {
+    "n_neighbors": 15,  # capped at len(vectors) - 1
+    "min_dist": 0.4,
+    "metric": "cosine",
+    "random_state": 42,  # same library -> same picture
+}
+
 
 def project_2d(vectors: list[list[float]]) -> tuple[list[list[float]], str]:
     """2D layout of the embedding vectors, normalized to [0, 1] with the
@@ -162,17 +190,19 @@ def project_2d(vectors: list[list[float]]) -> tuple[list[list[float]], str]:
             import numpy as np
             from umap import UMAP
 
+            params = dict(UMAP_PARAMS)
+            params["n_neighbors"] = min(params["n_neighbors"], len(vectors) - 1)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                raw = UMAP(
-                    n_neighbors=min(15, len(vectors) - 1),
-                    min_dist=0.4,
-                    metric="cosine",
-                    random_state=42,  # same library -> same picture
-                ).fit_transform(np.asarray(vectors, dtype=np.float32))
+                raw = UMAP(**params).fit_transform(np.asarray(vectors, dtype=np.float32))
             coords = [[float(x), float(y)] for x, y in raw]
             method = "umap"
-        except ImportError:
+        except Exception:
+            # Any failure at all, not just a missing dependency: UMAP's numba
+            # and spectral-initialization internals throw on inputs a personal
+            # library can easily produce (near-duplicate texts, degenerate
+            # neighbor graphs). PCA always works, so a picture the user can
+            # read beats a 502 telling them the map is broken.
             coords = None
     if coords is None:
         coords = _pca_2d(vectors)
@@ -194,15 +224,29 @@ def project_2d(vectors: list[list[float]]) -> tuple[list[list[float]], str]:
     )
 
 
+def project_score(vector: list[float], direction: dict) -> float:
+    """A text's position on the learned axis: its projection onto the unit
+    direction, centered so zero is the boundary between the two classes. The
+    one definition of what a score is — the detector and the map read the same
+    number off it."""
+    return dot(vector, direction["unit"]) - direction["bias"]
+
+
+def same_text(first: str, second: str) -> bool:
+    """Two texts that differ only in surrounding whitespace are the same text:
+    they embed identically, so both score the same and the gap between them is
+    zero. Callers check this *before* learning a direction — embedding a
+    foregone answer would cost a multi-second round-trip to the provider."""
+    return first.strip() == second.strip()
+
+
 def score_one(text: str, direction: dict, api_key: str) -> dict:
     (v,) = embed([text], api_key)
-    return {"score": dot(v, direction["unit"]) - direction["bias"]}
+    return {"score": project_score(v, direction)}
 
 
-def compare(first: str, second: str, direction: dict | None, api_key: str) -> dict:
-    if first.strip() == second.strip():
-        return {"first": 0.0, "second": 0.0, "gap": 0.0}
+def compare(first: str, second: str, direction: dict, api_key: str) -> dict:
     u, v = embed([first, second], api_key)
-    score1 = dot(u, direction["unit"]) - direction["bias"]
-    score2 = dot(v, direction["unit"]) - direction["bias"]
+    score1 = project_score(u, direction)
+    score2 = project_score(v, direction)
     return {"first": score1, "second": score2, "gap": score2 - score1}

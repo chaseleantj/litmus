@@ -164,6 +164,18 @@ def test_direction_cache_reused_then_invalidated(client, fake_embed):
     assert fake_embed.calls == 7
 
 
+def test_compare_provider_failure_is_502(client, monkeypatch):
+    from app import scoring
+
+    def boom(texts, api_key):
+        raise scoring.EmbeddingError("provider down")
+
+    monkeypatch.setattr(scoring, "embed", boom)
+    r = client.post("/api/compare", json={"first": "aaa", "second": "bbb"})
+    assert r.status_code == 502
+    assert r.json() == {"detail": "provider down"}
+
+
 # --- Score (single text) -----------------------------------------------------
 
 
@@ -206,6 +218,19 @@ def test_scores_are_centered_on_the_class_midpoint(client, fake_embed):
     mean_ai = sum(ai_scores) / len(ai_scores)
     assert mean_human > 0 > mean_ai
     assert abs(mean_human + mean_ai) < 1e-9
+
+
+def test_unusable_pairs_are_409(client, fake_embed, monkeypatch):
+    """A library that yields a zero direction must be an actionable 409, not a
+    ZeroDivisionError 500. Reaching it needs a write that bypasses validation."""
+    clear_examples()
+    with SessionLocal() as db:
+        db.add(Example(ai="identical", human="identical"))
+        db.add(Example(ai="also same", human="also same"))
+        db.commit()
+    r = client.post("/api/score", json={"text": "hello"})
+    assert r.status_code == 409
+    assert "differ" in r.json()["detail"]
 
 
 # --- Map ----------------------------------------------------------------------
@@ -252,14 +277,55 @@ def test_map_scores_match_the_scoring_axis(client, fake_embed):
 
 
 def test_map_is_cached_until_the_library_changes(client, fake_embed):
-    client.get("/api/map")
-    calls_after_first = fake_embed.calls  # direction + map texts
-    client.get("/api/map")
-    assert fake_embed.calls == calls_after_first  # fully cached
+    clear_examples()
+    add(client, "ai one", "human one")
+    e2 = add(client, "ai two", "human two")
 
+    client.get("/api/map")
+    calls = fake_embed.calls  # direction + map texts
+    client.get("/api/map")
+    assert fake_embed.calls == calls  # fully cached
+
+    # Every kind of library change invalidates: add, edit, delete.
     add(client, "a brand new ai text", "a brand new human text")
     client.get("/api/map")
-    assert fake_embed.calls > calls_after_first  # invalidated by the edit
+    assert fake_embed.calls > calls
+    calls = fake_embed.calls
+
+    client.put(f"/api/examples/{e2['id']}", json={"ai": "ai two EDITED", "human": "human two"})
+    client.get("/api/map")
+    assert fake_embed.calls > calls
+    calls = fake_embed.calls
+
+    client.delete(f"/api/examples/{e2['id']}")
+    client.get("/api/map")
+    assert fake_embed.calls > calls
+
+
+def test_map_cache_is_keyed_to_how_the_payload_is_built(client, fake_embed, monkeypatch):
+    """The cache outlives the process (SQLite), so the key has to cover more
+    than the texts: changing what goes into the payload must not keep serving
+    the picture built under the old settings."""
+    from app import main
+
+    client.get("/api/map")
+    calls = fake_embed.calls
+    monkeypatch.setattr(main, "SNIPPET_CHARS", 40)
+    client.get("/api/map")
+    assert fake_embed.calls > calls
+
+
+def test_small_library_reports_the_pca_method(client, fake_embed):
+    """The UI prints this label, so it has to name what actually ran: too few
+    points for a neighbor graph means PCA."""
+    from app.scoring import MIN_UMAP_POINTS
+
+    clear_examples()
+    add(client, "ai one", "human one")
+    add(client, "ai two", "human two")
+    body = client.get("/api/map").json()
+    assert 2 * body["pairs"] < MIN_UMAP_POINTS
+    assert body["method"] == "pca"
 
 
 def test_map_snippets_are_truncated_and_say_so(client, fake_embed):
@@ -277,13 +343,38 @@ def test_map_snippets_are_truncated_and_say_so(client, fake_embed):
     assert short_point["truncated"] is False
 
 
-def test_map_provider_failure_is_502(client, monkeypatch):
+def test_map_provider_failure_is_502(client, fake_embed, monkeypatch):
+    """The failure has to land in build_map's own embed call — with a cold
+    direction cache the request never gets that far, so warm it first."""
     from app import scoring
 
+    pairs = len(client.get("/api/examples").json())
+    client.post("/api/score", json={"text": "warm the direction cache"})
+
+    failed_on: list[list[str]] = []
+
     def boom(texts, api_key):
+        failed_on.append(texts)
         raise scoring.EmbeddingError("provider down")
 
     monkeypatch.setattr(scoring, "embed", boom)
+    r = client.get("/api/map")
+    assert r.status_code == 502
+    assert r.json() == {"detail": "provider down"}
+    # The one failed call was the map embedding every library text, not
+    # direction learning tripping over first.
+    assert [len(t) for t in failed_on] == [2 * pairs]
+
+
+def test_map_projection_failure_is_mapped_not_a_500(client, fake_embed, monkeypatch):
+    """project_2d runs inside the same error mapping as the embedding call, so
+    a scoring failure there is a response rather than a stack trace."""
+    from app import scoring
+
+    def boom(vectors):
+        raise scoring.EmbeddingError("provider down")
+
+    monkeypatch.setattr(scoring, "project_2d", boom)
     r = client.get("/api/map")
     assert r.status_code == 502
     assert r.json() == {"detail": "provider down"}
@@ -312,26 +403,21 @@ def test_project_2d_umap_and_pca_agree_on_the_contract():
     assert all((x, y) == (0.5, 0.5) for x, y in coords)
 
 
-def test_compare_provider_failure_is_502(client, monkeypatch):
-    from app import scoring
+def test_project_2d_falls_back_to_pca_when_umap_fails(monkeypatch):
+    """UMAP fails at runtime as well as at import time (numba, spectral init).
+    A picture from PCA beats an error page."""
+    import math
 
-    def boom(texts, api_key):
-        raise scoring.EmbeddingError("provider down")
+    import umap
 
-    monkeypatch.setattr(scoring, "embed", boom)
-    r = client.post("/api/compare", json={"first": "aaa", "second": "bbb"})
-    assert r.status_code == 502
-    assert r.json() == {"detail": "provider down"}
+    from app.scoring import MIN_UMAP_POINTS, project_2d
 
+    class Exploding:
+        def __init__(self, **kwargs):
+            raise RuntimeError("numba fell over")
 
-def test_unusable_pairs_are_409(client, fake_embed, monkeypatch):
-    """A library that yields a zero direction must be an actionable 409, not a
-    ZeroDivisionError 500. Reaching it needs a write that bypasses validation."""
-    clear_examples()
-    with SessionLocal() as db:
-        db.add(Example(ai="identical", human="identical"))
-        db.add(Example(ai="also same", human="also same"))
-        db.commit()
-    r = client.post("/api/score", json={"text": "hello"})
-    assert r.status_code == 409
-    assert "differ" in r.json()["detail"]
+    monkeypatch.setattr(umap, "UMAP", Exploding)
+    big = [[math.sin(i * 1.7 + d) for d in range(8)] for i in range(MIN_UMAP_POINTS + 4)]
+    coords, method = project_2d(big)
+    assert method == "pca"
+    assert all(0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 for x, y in coords)

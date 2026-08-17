@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tick } from "svelte";
   import { DownloadSimple, PencilSimple, Plus, Trash, UploadSimple, X } from "phosphor-svelte";
+  import { toErrorState } from "./errors";
   import {
     addPair,
     deletePair,
@@ -101,7 +102,7 @@
   });
 
   function errMessage(err: unknown): string {
-    return err instanceof Error ? err.message : "Something went wrong.";
+    return toErrorState(err, "Something went wrong.").message;
   }
 
   /**
@@ -367,7 +368,7 @@
       {:else if library.error}
         <div class="card panel-note">
           <h3>Couldn’t load your examples</h3>
-          <p>{library.error}</p>
+          <p>{library.error.message}</p>
           <button class="btn btn-primary" onclick={loadLibrary}>Try again</button>
         </div>
       {:else if count === 0 && !adding}

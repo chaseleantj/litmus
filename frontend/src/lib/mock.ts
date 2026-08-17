@@ -5,7 +5,7 @@
  */
 import { ApiError } from "./errors";
 import { MIN_PAIRS } from "./library.svelte";
-import type { Example, PairInput } from "./types";
+import { SNIPPET_CHARS, type Example, type PairInput } from "./types";
 
 const now = () => new Date().toISOString();
 
@@ -63,6 +63,25 @@ function requireCalibrated(): void {
   }
 }
 
+/**
+ * The backend's ExampleIn rules (app/main.py: valid_text, versions_differ),
+ * reported the way api.ts words a real 422 — otherwise the editor's error
+ * path only ever gets exercised against the live server.
+ */
+function validatePair(body: unknown): PairInput {
+  const { ai, human } = (body ?? {}) as Partial<PairInput>;
+  if (typeof ai !== "string" || !ai.trim()) {
+    detailError(422, 'The "ai" field must be a non-empty text.');
+  }
+  if (typeof human !== "string" || !human.trim()) {
+    detailError(422, 'The "human" field must be a non-empty text.');
+  }
+  if (ai.trim() === human.trim()) {
+    detailError(422, "The AI version and your version must differ.");
+  }
+  return { ai, human };
+}
+
 /** Deterministic pseudo "human-likeness" score in roughly -0.2…+0.2, matching
  * the real backend's signed, near-zero scale. */
 function score(text: string): number {
@@ -78,7 +97,7 @@ export async function handle(method: string, path: string, body: unknown): Promi
   if (key === "GET /api/examples") return examples.map((e) => ({ ...e }));
 
   if (key === "POST /api/examples") {
-    const p = body as PairInput;
+    const p = validatePair(body);
     const row: Example = { id: nextId++, ai: p.ai, human: p.human, created_at: now(), updated_at: now() };
     examples.push(row);
     return { ...row };
@@ -118,8 +137,8 @@ export async function handle(method: string, path: string, body: unknown): Promi
         return {
           pair_id: e.id,
           role,
-          snippet: text.slice(0, 240),
-          truncated: text.length > 240,
+          snippet: text.slice(0, SNIPPET_CHARS),
+          truncated: text.length > SNIPPET_CHARS,
           score: role === "ai" ? -Math.abs(s) - 0.02 : Math.abs(s) + 0.02,
           x: Math.min(1, Math.max(0, (role === "ai" ? 0.28 : 0.72) + jx)),
           y: Math.min(1, Math.max(0, 0.5 + jy)),
@@ -151,7 +170,7 @@ export async function handle(method: string, path: string, body: unknown): Promi
     const idx = examples.findIndex((e) => e.id === id);
     if (idx === -1) detailError(404, "Example not found.");
     if (method === "PUT") {
-      const p = body as PairInput;
+      const p = validatePair(body);
       examples[idx] = { ...examples[idx], ai: p.ai, human: p.human, updated_at: now() };
       return { ...examples[idx] };
     }

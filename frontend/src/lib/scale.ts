@@ -4,11 +4,17 @@
  * little headroom, so ticks stay at clean values while large scores never
  * leave the axis.
  */
-export const DOMAINS = [0.2, 0.3, 0.4, 0.5, 0.75, 1];
+const DOMAINS = [0.2, 0.3, 0.4, 0.5, 0.75, 1];
 
 /** The domain half-width to use for scores whose largest |value| is maxAbs. */
 export function pickDomain(maxAbs: number): number {
   return DOMAINS.find((d) => d >= maxAbs * 1.05) ?? DOMAINS[DOMAINS.length - 1];
+}
+
+/** The five labelled ticks of a domain, ends and midpoints around zero. Both
+ *  strips draw the same ladder, so they read as one scale. */
+export function ticksFor(domain: number): number[] {
+  return [-domain, -domain / 2, 0, domain / 2, domain];
 }
 
 /** Position of a score on the strip, 0..100 (%), clamped to the domain. */

@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { toErrorState, type ErrorState } from "./errors";
 import type { Example, PairInput } from "./types";
 
 /**
@@ -10,7 +11,7 @@ import type { Example, PairInput } from "./types";
 export const library = $state({
   examples: [] as Example[],
   loading: true,
-  error: null as string | null,
+  error: null as ErrorState | null,
 });
 
 /**
@@ -20,13 +21,23 @@ export const library = $state({
  */
 export const MIN_PAIRS = 2;
 
+/**
+ * Whether scoring is worth offering at all. Below MIN_PAIRS there is no
+ * direction to score against; while the library is still loading (or failed to
+ * load) the server stays the judge via its 409, so the UI does not block on a
+ * count it does not have. Every scoring surface gates on this one answer.
+ */
+export function isCalibrated(): boolean {
+  return library.loading || library.error !== null || library.examples.length >= MIN_PAIRS;
+}
+
 export async function loadLibrary(): Promise<void> {
   library.loading = true;
   library.error = null;
   try {
     library.examples = await api.listExamples();
   } catch (err) {
-    library.error = err instanceof Error ? err.message : "Something went wrong.";
+    library.error = toErrorState(err, "Something went wrong.");
   } finally {
     library.loading = false;
   }

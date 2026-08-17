@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { library, MIN_PAIRS } from "./library.svelte";
+  import ErrorPanel from "./ErrorPanel.svelte";
+  import { isCalibrated, library } from "./library.svelte";
   import { librarySignature, loadMap, mapState } from "./mapState.svelte";
-  import { fmtScore, pickDomain, scalePos, tickLabel } from "./scale";
+  import { fmtScore, pickDomain, scalePos, tickLabel, ticksFor } from "./scale";
   import type { MapPoint } from "./types";
 
   interface Props {
@@ -26,13 +27,9 @@
   const points = $derived<MapPoint[]>(mapState.data?.points ?? []);
   const axisView = $derived(mapState.view === "axis");
   const domain = $derived(pickDomain(Math.max(0, ...points.map((p) => Math.abs(p.score)))));
-  const ticks = $derived([-domain, -domain / 2, 0, domain / 2, domain]);
+  const ticks = $derived(ticksFor(domain));
 
-  // Scoring is meaningless below MIN_PAIRS; while the library is still
-  // loading (or failed to load) the server stays the judge via its 409.
-  const calibrated = $derived(
-    library.loading || library.error !== null || library.examples.length >= MIN_PAIRS,
-  );
+  const calibrated = $derived(isCalibrated());
 
   // The picture on screen was computed for an older library: keep showing it
   // (dimmed, with a pill) while the fresh one is embedding.
@@ -479,15 +476,12 @@
       </button>
     </div>
   {:else if mapState.error}
-    <div class="panel-note" role="alert">
-      <h3 class="serif">Couldn’t draw the map</h3>
-      <p class="error-text">{mapState.error.message}</p>
-      {#if mapState.error.status === 409}
-        <button class="btn btn-primary" onclick={onOpenLibrary}>Add training pairs</button>
-      {:else}
-        <button class="btn" onclick={() => loadMap()}>Try again</button>
-      {/if}
-    </div>
+    <ErrorPanel
+      heading="Couldn’t draw the map"
+      error={mapState.error}
+      {onOpenLibrary}
+      onRetry={loadMap}
+    />
   {:else if !mapState.data}
     <div class="map-shell">
       <div class="map-head" aria-hidden="true">
@@ -701,26 +695,7 @@
     border-left: 1px dashed var(--border-strong);
   }
 
-  .tick {
-    position: absolute;
-    top: 18px;
-    width: 1px;
-    height: 5px;
-    background: var(--border-strong);
-    transform: translateX(-0.5px);
-  }
-
-  .tick.zero {
-    background: var(--ink-faint);
-  }
-
-  .tick-num {
-    position: absolute;
-    top: 7px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: var(--ink-faint);
-  }
+  /* .tick / .tick-num are shared with the Detect strip — see app.css. */
 
   /* ---------- Tooltip ---------- */
   .tooltip {

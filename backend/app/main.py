@@ -4,7 +4,6 @@ import json
 import threading
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -13,8 +12,8 @@ from sqlalchemy.orm import Session
 
 from . import scoring
 from .db import DirectionCache, Example, MapCache, SessionLocal, init_db
+from .paths import REPO_ROOT
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SEED_FILE = REPO_ROOT / "examples.json"
 FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
 
@@ -159,7 +158,6 @@ class MapOut(BaseModel):
     pairs: int
 
 
-
 # --- Examples CRUD ---------------------------------------------------------
 
 
@@ -268,9 +266,9 @@ def api_key_and_direction(db: Session) -> tuple[str, dict]:
 @app.post("/api/compare", response_model=CompareOut)
 def compare_texts(body: CompareIn, db: Session = Depends(get_db)):
     require_calibrated(db)
-    # Identical texts score identically by definition — no direction needed.
-    if body.first.strip() == body.second.strip():
-        return scoring.compare(body.first, body.second, None, "")
+    # Asked before any direction is learned: scoring.same_text explains why.
+    if scoring.same_text(body.first, body.second):
+        return CompareOut(first=0.0, second=0.0, gap=0.0)
     api_key, direction = api_key_and_direction(db)
     with scoring_errors():
         return scoring.compare(body.first, body.second, direction, api_key)
@@ -293,7 +291,7 @@ def build_map(db: Session) -> dict:
     lay the embeddings out in 2D. Cached until the library changes."""
     api_key, direction = api_key_and_direction(db)
     rows = ordered_examples(db)
-    key = scoring.direction_key([(r.ai, r.human) for r in rows])
+    key = scoring.map_key([(r.ai, r.human) for r in rows], SNIPPET_CHARS)
     with _map_lock:
         cached = db.get(MapCache, key)
         if cached is not None:
@@ -309,7 +307,7 @@ def build_map(db: Session) -> dict:
 
         with scoring_errors():
             vectors = scoring.embed(texts, api_key)
-        coords, method = scoring.project_2d(vectors)
+            coords, method = scoring.project_2d(vectors)
 
         payload = {
             "points": [
@@ -318,7 +316,7 @@ def build_map(db: Session) -> dict:
                     "role": role,
                     "snippet": text[:SNIPPET_CHARS],
                     "truncated": len(text) > SNIPPET_CHARS,
-                    "score": scoring.dot(v, direction["unit"]) - direction["bias"],
+                    "score": scoring.project_score(v, direction),
                     "x": xy[0],
                     "y": xy[1],
                 }
