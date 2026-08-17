@@ -1,0 +1,294 @@
+{
+  "model": "openai/text-embedding-3-small",
+  "dim": 1536,
+  "n_pairs": 10,
+  "protocol": "leave-one-pair-out (document level)",
+  "sentence_counts": [
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    5,
+    5,
+    6,
+    6,
+    7,
+    10,
+    13
+  ],
+  "results": [
+    {
+      "method": "bertscore-soft",
+      "aggregation": "top-1",
+      "auc": 0.8,
+      "d_prime": 1.1346159017857473,
+      "paired_accuracy": 0.7
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "top-2",
+      "auc": 0.8,
+      "d_prime": 1.1187130302132289,
+      "paired_accuracy": 0.9
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "top-3",
+      "auc": 0.84,
+      "d_prime": 1.1721751614183382,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "top-4",
+      "auc": 0.85,
+      "d_prime": 1.1696651702885952,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "top-5",
+      "auc": 0.84,
+      "d_prime": 1.1748301306676008,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "top-7",
+      "auc": 0.82,
+      "d_prime": 1.1376711148176728,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "top-10",
+      "auc": 0.82,
+      "d_prime": 1.1102836901982787,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "mean (k=all)",
+      "auc": 0.8,
+      "d_prime": 1.0986371923188396,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "top-25%",
+      "auc": 0.85,
+      "d_prime": 1.1812718247651088,
+      "paired_accuracy": 0.9
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "top-50%",
+      "auc": 0.79,
+      "d_prime": 1.1811387488482905,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "|s|-weighted",
+      "auc": 0.79,
+      "d_prime": 1.0568628221576641,
+      "paired_accuracy": 0.8
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "softmax T=0.02",
+      "auc": 0.81,
+      "d_prime": 1.0569274040621546,
+      "paired_accuracy": 0.7
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "softmax T=0.05",
+      "auc": 0.8,
+      "d_prime": 1.0399563218207448,
+      "paired_accuracy": 0.8
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "softmax T=0.1",
+      "auc": 0.8,
+      "d_prime": 1.0767145911406981,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "rank-linear",
+      "auc": 0.81,
+      "d_prime": 1.1418087654424602,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "trimmed",
+      "auc": 0.81,
+      "d_prime": 1.1741468475906278,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "bertscore-soft",
+      "aggregation": "median",
+      "auc": 0.77,
+      "d_prime": 1.0293025972706364,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "top-1",
+      "auc": 0.725,
+      "d_prime": 0.829277103590024,
+      "paired_accuracy": 0.8
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "top-2",
+      "auc": 0.71,
+      "d_prime": 0.8922685301876756,
+      "paired_accuracy": 0.8
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "top-3",
+      "auc": 0.77,
+      "d_prime": 1.044998507015011,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "top-4",
+      "auc": 0.79,
+      "d_prime": 1.1722757066219731,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "top-5",
+      "auc": 0.79,
+      "d_prime": 1.1884225453487762,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "top-7",
+      "auc": 0.79,
+      "d_prime": 1.1636199928372504,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "top-10",
+      "auc": 0.81,
+      "d_prime": 1.2362003776391526,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "mean (k=all)",
+      "auc": 0.81,
+      "d_prime": 1.2235854698116475,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "top-25%",
+      "auc": 0.765,
+      "d_prime": 0.9812576517508854,
+      "paired_accuracy": 0.8
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "top-50%",
+      "auc": 0.78,
+      "d_prime": 1.1720668037978001,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "|s|-weighted",
+      "auc": 0.8,
+      "d_prime": 1.164523169940192,
+      "paired_accuracy": 0.9
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "softmax T=0.02",
+      "auc": 0.74,
+      "d_prime": 0.9262127734212205,
+      "paired_accuracy": 0.8
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "softmax T=0.05",
+      "auc": 0.77,
+      "d_prime": 1.1292181974025879,
+      "paired_accuracy": 0.9
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "softmax T=0.1",
+      "auc": 0.82,
+      "d_prime": 1.2118045399653545,
+      "paired_accuracy": 0.9
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "rank-linear",
+      "auc": 0.82,
+      "d_prime": 1.1623553653807097,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "trimmed",
+      "auc": 0.83,
+      "d_prime": 1.2671880521204941,
+      "paired_accuracy": 1.0
+    },
+    {
+      "method": "sent-proj",
+      "aggregation": "median",
+      "auc": 0.78,
+      "d_prime": 1.0793950761941853,
+      "paired_accuracy": 1.0
+    }
+  ],
+  "flipped_comparisons": {
+    "bertscore-soft": {
+      "top-4 vs top-25%": 6,
+      "top-4 vs top-3": 1,
+      "top-4 vs top-5": 3,
+      "top-4 vs top-7": 5,
+      "top-25% vs top-3": 7,
+      "top-25% vs top-5": 7,
+      "top-25% vs top-7": 9,
+      "top-3 vs top-5": 4,
+      "top-3 vs top-7": 6,
+      "top-5 vs top-7": 2
+    },
+    "sent-proj": {
+      "trimmed vs softmax T=0.1": 5,
+      "trimmed vs rank-linear": 7,
+      "trimmed vs top-10": 2,
+      "trimmed vs mean (k=all)": 2,
+      "softmax T=0.1 vs rank-linear": 6,
+      "softmax T=0.1 vs top-10": 5,
+      "softmax T=0.1 vs mean (k=all)": 5,
+      "rank-linear vs top-10": 7,
+      "rank-linear vs mean (k=all)": 7,
+      "top-10 vs mean (k=all)": 0
+    }
+  }
+}
