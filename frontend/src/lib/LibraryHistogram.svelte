@@ -131,11 +131,10 @@
                 style="bottom: calc({(b.count === 0 ? 100 : (b.count / hist.yMax) * 100)}% + 6px)"
               >{bucketCount(b)}</span>
             {/if}
-            <span
-              class="bar"
-              class:zero={b.count === 0}
-              style="height: {b.count === 0 ? 100 : (b.count / hist.yMax) * 100}%"
-            ></span>
+            <span class="track" aria-hidden="true"></span>
+            {#if b.count > 0}
+              <span class="bar" style="height: {(b.count / hist.yMax) * 100}%"></span>
+            {/if}
           </button>
         {/each}
       </div>
@@ -201,7 +200,27 @@
     outline-offset: 1px;
   }
 
+  /* A faint full-height column behind every day, so filled bars sit on the
+     same rhythm as empty ones. */
+  .track {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: max(2px, calc(100% - 3px));
+    height: 100%;
+    border-radius: 1.5px 1.5px 0 0;
+    background: hsl(var(--ink-hsl) / 0.03);
+    pointer-events: none;
+  }
+
+  .slot.active .track {
+    background: hsl(var(--ink-hsl) / 0.05);
+  }
+
   .bar {
+    position: relative;
+    z-index: 1;
     width: max(2px, calc(100% - 3px));
     min-height: 2px;
     border-radius: 1.5px 1.5px 0 0;
@@ -213,16 +232,6 @@
 
   .slot.active .bar {
     background: hsl(var(--ink-hsl) / 0.78);
-  }
-
-  /* Empty days still draw a full-height column, just barely there, so the
-     plot keeps a regular rhythm. */
-  .bar.zero {
-    background: hsl(var(--ink-hsl) / 0.06);
-  }
-
-  .slot.active .bar.zero {
-    background: hsl(var(--ink-hsl) / 0.1);
   }
 
   .axis {
