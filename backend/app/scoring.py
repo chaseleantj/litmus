@@ -170,8 +170,11 @@ MIN_UMAP_POINTS = 8
 # them: a picture computed under different settings must not be served from the
 # cache as if nothing changed.
 UMAP_PARAMS = {
-    "n_neighbors": 15,  # capped at len(vectors) - 1
-    "min_dist": 0.4,
+    # 15 neighbors on a ~30-point library links each text to half the set,
+    # so the layout is almost uniform. 5 keeps local pairs and topic groups.
+    "n_neighbors": 5,
+    # 0.4 kept every dot isolated. 0.1 lets same-pair and same-topic texts sit close.
+    "min_dist": 0.1,
     "metric": "cosine",
     "random_state": 42,  # same library -> same picture
 }
@@ -209,19 +212,15 @@ def project_2d(vectors: list[list[float]]) -> tuple[list[list[float]], str]:
 
     xs = [c[0] for c in coords]
     ys = [c[1] for c in coords]
-
-    # Each axis fills [0, 1] independently: neither UMAP nor PCA axes carry
-    # units, and the client stretches to its canvas anyway. A zero-extent
-    # axis (identical vectors) centers instead of dividing by zero.
-    def norm(value: float, lo: float, hi: float) -> float:
-        if hi - lo < 1e-12:
-            return 0.5
-        return (value - lo) / (hi - lo)
-
-    return (
-        [[norm(c[0], min(xs), max(xs)), norm(c[1], min(ys), max(ys))] for c in coords],
-        method,
-    )
+    minx, maxx = min(xs), max(xs)
+    miny, maxy = min(ys), max(ys)
+    span = max(maxx - minx, maxy - miny)
+    # Fit the longer side to [0, 1] and keep the aspect ratio. Stretching each
+    # axis on its own made tight UMAP groups look like they filled the canvas.
+    if span < 1e-12:
+        return [[0.5, 0.5] for _ in coords], method
+    cx, cy = (minx + maxx) / 2, (miny + maxy) / 2
+    return [[0.5 + (x - cx) / span, 0.5 + (y - cy) / span] for x, y in coords], method
 
 
 def project_score(vector: list[float], direction: dict) -> float:
