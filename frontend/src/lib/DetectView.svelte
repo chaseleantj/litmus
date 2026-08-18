@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowsLeftRight, Check, Shuffle } from "phosphor-svelte";
+  import { ArrowsLeftRight, Check, Play } from "phosphor-svelte";
   import {
     clearResults,
     compareState as cs,
@@ -211,6 +211,17 @@
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  /** Whitespace-separated tokens; empty and blank strings are 0. */
+  function wordCount(text: string): number {
+    const trimmed = text.trim();
+    return trimmed ? trimmed.split(/\s+/).length : 0;
+  }
+
+  function wordLabel(text: string): string {
+    const n = wordCount(text);
+    return n === 1 ? "1 word" : `${n} words`;
+  }
+
   function tryExample() {
     if (library.examples.length < MIN_PAIRS) {
       onOpenLibrary();
@@ -231,9 +242,12 @@
 <section aria-label="Detect AI writing">
   <div class="inputs" class:pair>
     <div class="field">
-      {#if pair}
-        <label class="micro-label" for="det-t1">First text</label>
-      {/if}
+      <div class="field-head">
+        {#if pair}
+          <label class="micro-label" for="det-t1">First text</label>
+        {/if}
+        <span class="micro-label">{wordLabel(cs.first)}</span>
+      </div>
       <textarea
         id="det-t1"
         aria-label={pair ? undefined : "Text to score"}
@@ -245,7 +259,10 @@
     </div>
     {#if pair}
       <div class="field">
-        <label class="micro-label" for="det-t2">Second text</label>
+        <div class="field-head">
+          <label class="micro-label" for="det-t2">Second text</label>
+          <span class="micro-label">{wordLabel(cs.second)}</span>
+        </div>
         <textarea
           id="det-t2"
           bind:value={cs.second}
@@ -295,7 +312,7 @@
       disabled={library.loading}
       title="Fill in a text from your training library"
     >
-      <Shuffle size={14} />
+      <Play size={14} />
       Try an example
     </button>
   </div>
@@ -342,7 +359,7 @@
       </p>
 
       <div class="chart" class:tiered>
-        <span class="micro-label pole pole-ai" aria-hidden="true">AI</span>
+        <span class="micro-label pole ai" aria-hidden="true">AI</span>
         <div class="scale" bind:this={scaleEl}>
           <div class="litmus-strip strip">
             {#if chart.band}
@@ -374,7 +391,7 @@
             </span>
           {/each}
         </div>
-        <span class="micro-label pole pole-human" aria-hidden="true">Human</span>
+        <span class="micro-label pole human" aria-hidden="true">Human</span>
       </div>
 
       {#if pair && verdict.kind !== "identical"}
@@ -438,6 +455,16 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .field-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .field-head .micro-label:last-child {
+    margin-left: auto;
   }
 
   .field textarea {
@@ -518,14 +545,6 @@
   .pole {
     flex-shrink: 0;
     padding-bottom: 26px; /* optically center against strip + tick numbers */
-  }
-
-  .pole-ai {
-    color: var(--ai);
-  }
-
-  .pole-human {
-    color: var(--human);
   }
 
   .scale {

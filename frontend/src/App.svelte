@@ -198,16 +198,40 @@
     padding-bottom: 6vh;
   }
 
-  /* Below this the tagline starts crowding the header pills. */
+  /* Beside the wordmark the tagline crowds the pills; under it, it doesn't. */
   @media (max-width: 920px) {
+    header {
+      align-items: flex-start;
+    }
+
+    .brand {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+
     .tagline {
-      display: none;
+      white-space: normal;
     }
   }
 
   @media (max-width: 560px) {
     .shell {
       padding: 0 16px 56px;
+    }
+
+    /* Brand takes the first row so the tagline can use the full width
+       instead of wrapping into the leftover beside the pills. */
+    header {
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      flex: 1 0 100%;
+    }
+
+    .header-side {
+      margin-left: auto;
     }
 
     .mock-note {

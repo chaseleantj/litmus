@@ -33,9 +33,9 @@
   <h3 class="serif">{heading}</h3>
   <!-- The library's column headers sit directly above this editor and label
        both columns, so the fields only name themselves once they stack. -->
-  <div class="fields">
+  <div class="fields pair-cols">
     <div class="field">
-      <span class="micro-label dot-marker ai stacked-only">AI version</span>
+      <span class="micro-label ai stacked-only">AI version</span>
       <textarea
         bind:value={ai}
         rows="7"
@@ -45,7 +45,7 @@
       ></textarea>
     </div>
     <div class="field">
-      <span class="micro-label dot-marker human stacked-only">Your version</span>
+      <span class="micro-label human stacked-only">Your version</span>
       <textarea
         bind:value={human}
         rows="7"
@@ -75,8 +75,6 @@
 </form>
 
 <style>
-  /* Padding and column gap are chosen so the two fields land on the same
-     axis as the library's column headers and pair cards. */
   .editor {
     padding: 18px 18px 16px;
   }
@@ -87,17 +85,12 @@
     margin-bottom: 14px;
   }
 
-  .fields {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-  }
-
   .field {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+    min-width: 0;
   }
 
   .field textarea {
@@ -115,12 +108,5 @@
     margin-right: auto;
     font-size: var(--text-body);
     color: var(--ink-faint);
-  }
-
-  @media (max-width: 720px) {
-    .fields {
-      grid-template-columns: 1fr;
-      gap: 16px;
-    }
   }
 </style>

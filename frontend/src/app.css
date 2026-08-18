@@ -314,9 +314,19 @@ textarea:disabled {
   font-variant-numeric: tabular-nums;
 }
 
-/* The AI / Human marker: a micro-label with a colored dot. Used for the
-   library's column headers, its stacked mobile labels, and the editor's
-   field labels — one style, so a side is marked the same way everywhere. */
+/* Side identity: the word itself carries the hue. Axis poles, library
+   column headers, and stacked field labels all use this — a side is
+   named the same way everywhere. Dots are reserved for things that
+   actually are dots (map points, the tooltip that names one). */
+.micro-label.ai {
+  color: var(--ai);
+}
+
+.micro-label.human {
+  color: var(--human);
+}
+
+/* The map tooltip names a colored point, so it keeps a matching dot. */
 .dot-marker {
   display: inline-flex;
   align-items: center;
@@ -339,16 +349,46 @@ textarea:disabled {
   background: var(--human);
 }
 
-/* Where a header row already labels both columns, the per-field markers stay
+/* Where a header row already labels both columns, the per-field names stay
    hidden until the columns stack. One breakpoint owns that decision for the
    library list and the editor alike. */
-.dot-marker.stacked-only {
+.stacked-only {
   display: none;
 }
 
+/* The library's two-column layout: headers, pair cards, and the editor
+   share this so a side always sits on the same axis. */
+.pair-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.pair-cols > :first-child {
+  padding-right: 20px;
+}
+
+.pair-cols > :last-child {
+  padding-left: 20px;
+  border-left: 1px solid var(--border);
+}
+
 @media (max-width: 720px) {
-  .dot-marker.stacked-only {
-    display: inline-flex;
+  .stacked-only {
+    display: block;
+  }
+
+  .pair-cols {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .pair-cols > :first-child {
+    padding-right: 0;
+  }
+
+  .pair-cols > :last-child {
+    padding-left: 0;
+    border-left: none;
   }
 }
 

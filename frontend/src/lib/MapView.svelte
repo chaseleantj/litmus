@@ -520,8 +520,8 @@
         <div class="map-host" bind:this={host}>
           <!-- Axis chrome fades in under the dots when the swarm forms. -->
           <div class="axis-chrome" class:visible={axisView} aria-hidden="true">
-            <span class="micro-label pole pole-ai" style="left: {poleInset}px">AI</span>
-            <span class="micro-label pole pole-human" style="right: {poleInset}px">Human</span>
+            <span class="micro-label pole ai" style="left: {poleInset}px">AI</span>
+            <span class="micro-label pole human" style="right: {poleInset}px">Human</span>
             <div class="zero-line"></div>
             <div class="axis-scale" style="left: {axisPadX}px; right: {axisPadX}px">
               <div class="litmus-strip"></div>
@@ -666,14 +666,7 @@
   }
 
   /* Horizontal insets of the poles and the scale are set inline from the
-     component's layout constants. */
-  .pole-ai {
-    color: var(--ai);
-  }
-
-  .pole-human {
-    color: var(--human);
-  }
+     component's layout constants. Hue lives on .micro-label.ai / .human. */
 
   .axis-scale {
     position: absolute;

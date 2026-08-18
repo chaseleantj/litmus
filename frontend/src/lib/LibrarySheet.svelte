@@ -284,7 +284,7 @@
       <div class="sheet-title">
         <h2 class="serif">Training library</h2>
         <p class="sheet-sub">
-          Each pair is the same content. The left one is the text written by an AI, and the right one is your version. Together they define what "sounds like you" means.
+          Each pair is the same content: a text written by an AI, and your version. Together they define what "sounds like you" means.
         </p>
       </div>
       <button
@@ -345,9 +345,9 @@
       <!-- Above the editor as well as the list, so it labels both columns
            wherever they appear. -->
       {#if !library.loading && !library.error && (count > 0 || adding)}
-        <div class="list-head" aria-hidden="true">
-          <span class="micro-label dot-marker ai">AI version</span>
-          <span class="micro-label dot-marker human">Your version</span>
+        <div class="list-head pair-cols" aria-hidden="true">
+          <span class="micro-label ai">AI version</span>
+          <span class="micro-label human">Your version</span>
         </div>
       {/if}
 
@@ -404,16 +404,16 @@
               {:else}
                 <article class="card pair">
                   <div
-                    class="pair-body"
+                    class="pair-body pair-cols"
                     class:collapsed={!expanded.has(ex.id)}
                     use:clampProbe={ex.id}
                   >
                     <div class="side">
-                      <span class="micro-label dot-marker ai stacked-only side-label">AI version</span>
+                      <span class="micro-label ai stacked-only side-label">AI version</span>
                       <p>{ex.ai}</p>
                     </div>
                     <div class="side">
-                      <span class="micro-label dot-marker human stacked-only side-label">Your version</span>
+                      <span class="micro-label human stacked-only side-label">Your version</span>
                       <p>{ex.human}</p>
                     </div>
                   </div>
@@ -559,9 +559,12 @@
     flex-shrink: 0;
   }
 
+  /* No padding-top: a sticky child with top: 0 pins below the scrollport's
+     padding, and pair text would show in that strip. The toolbar carries
+     the inset instead — it is always the first child. */
   .sheet-body {
     overflow-y: auto;
-    padding: 18px 24px 24px;
+    padding: 0 24px 24px;
   }
 
   .toolbar {
@@ -570,6 +573,7 @@
     justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
+    padding-top: 18px;
     margin-bottom: 18px;
   }
 
@@ -599,17 +603,33 @@
     height: 128px;
   }
 
-  /* Column headers for the whole list; card grids align because they share
-     the same horizontal padding and column gap. */
+  /* pair-cols (app.css) owns the two-column grid. 19px horizontal padding
+     matches the cards' 18px pad plus their 1px border, so the names sit on
+     the same axis as the text. The bottom hairline turns the short column
+     rule into a table header instead of a floating tick. Sticky so the
+     names stay put once the histogram scrolls off — and fully opaque, so
+     scrolling cards cannot show above or below it. */
   .list-head {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-    padding: 0 19px;
-    margin-bottom: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 10px 19px 8px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--border);
   }
 
-  /* The show/hide rule lives with .dot-marker in app.css; only the spacing
+  .list-head span {
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  /* Keep the 1px for column math; don't draw a short tick that sits
+     between the names and never reaches the cards. */
+  .list-head > :last-child {
+    border-left-color: transparent;
+  }
+
+  /* The show/hide rule lives with .stacked-only in app.css; only the spacing
      below a stacked label belongs to this list. */
   .side-label {
     margin-bottom: 7px;
@@ -633,22 +653,8 @@
     border-color: var(--border-strong);
   }
 
-  .pair-body {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-
   .side {
     min-width: 0;
-  }
-
-  .side:first-child {
-    padding-right: 20px;
-  }
-
-  .side:last-child {
-    padding-left: 20px;
-    border-left: 1px solid var(--border);
   }
 
   .side p {
@@ -743,20 +749,6 @@
 
     .list-head {
       display: none;
-    }
-
-    .pair-body {
-      grid-template-columns: 1fr;
-      gap: 14px;
-    }
-
-    .side:first-child {
-      padding-right: 0;
-    }
-
-    .side:last-child {
-      padding-left: 0;
-      border-left: none;
     }
   }
 </style>
