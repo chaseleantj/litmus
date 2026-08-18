@@ -1,5 +1,13 @@
 <script lang="ts">
-  import { ArrowsLeftRight, Check, Shuffle } from "phosphor-svelte";
+  // Legacy reassembly. Feature logic (single/pair modes, calibration gate,
+  // shared compareState, Ctrl+Enter scoring, shortcuts) is the current one;
+  // the presentation is restored from history:
+  //   - intro lede + "Try an example" top button, word counters, hint row,
+  //     zone-block pair chart with flag markers and the three-part legend,
+  //     result card chrome, verbose save-as-pair sentence: 745fda9.
+  //   - single-text baseline chart with dot pin and "More like AI"/"More
+  //     human" axis labels, X close on the second field, "Compare two texts"
+  //     ghost button: 774fad4^ (pre-library-sheet).
   import {
     clearResults,
     compareState as cs,
@@ -12,125 +20,64 @@
     toggleMode,
     upToDate,
   } from "./compareState.svelte";
-  import ErrorPanel from "./ErrorPanel.svelte";
   import { isCalibrated, library, MIN_PAIRS } from "./library.svelte";
-  import { fmtScore, pickDomain, scalePos, tickLabel, ticksFor } from "./scale";
 
   interface Props {
-    onOpenLibrary: () => void;
-    /** True while the library sheet is open: global shortcuts stand down. */
-    suspended: boolean;
+    onGoExamples: () => void;
   }
 
-  let { onOpenLibrary, suspended }: Props = $props();
+  let { onGoExamples }: Props = $props();
 
-  // Interpretation thresholds (shared with the strip and the verdict copy).
+  // Interpretation thresholds (shared with the chart and the verdict copy).
   const TOO_CLOSE = 0.02;
   const CLEAR = 0.1;
 
   const pair = $derived(cs.mode === "pair");
-  // Derived from what was scored, not from what is currently typed: everything
-  // else in the result is keyed to cs.lastScored, and a result that described
-  // one thing while the verdict described another would be worse than stale.
   const identical = $derived(
     pair && cs.lastScored !== null && cs.lastScored.a.trim() === cs.lastScored.b.trim(),
   );
 
   const calibrated = $derived(isCalibrated());
 
-  interface Marker {
-    score: number;
-    label: string | null;
-    tier: "low" | "high";
-    /** Identical texts have no measured score to show — only a verdict. */
-    showValue: boolean;
-  }
-
-  /** Within this much of an end, anchor a label's edge to its pin rather than
-   *  its center: it stays attached and cannot hang off the axis. */
-  const EDGE_ZONE = 15;
-
-  /** Two pins closer than this (in % of the scale) would hide each other. */
-  const PIN_OVERLAP = 3;
-
-  /** Clear space required between two labels sharing a row. */
-  const LABEL_GUTTER = 12;
-
-  let scaleEl = $state<HTMLElement>();
-  let tiered = $state(false);
+  const words = (t: string) => (t.trim() ? t.trim().split(/\s+/).length : 0);
+  const w1 = $derived(words(cs.first));
+  const w2 = $derived(words(cs.second));
+  const wordLabel = (n: number) => (n === 1 ? "1 word" : `${n.toLocaleString()} words`);
 
   /**
-   * Two labels only need two rows when they would actually collide, which
-   * depends on their rendered width — so it has to be measured. Positions are
-   * recomputed from the marker data rather than read off the DOM, because
-   * `left` is mid-transition for 420ms after every change.
+   * Pair chart (745fda9): the first text is the anchor at the centre; the
+   * second is placed by its distance from it, positive to the right (more
+   * human). The span widens to keep the marker on the bar for large gaps.
    */
-  $effect(() => {
-    const el = scaleEl;
-    const markers = chart?.markers;
-    if (!el || !markers || markers.length < 2) {
-      tiered = false;
-      return;
-    }
-    const measure = () => {
-      const labels = [...el.querySelectorAll<HTMLElement>(".pin-label")];
-      if (labels.length < 2) return;
-      const scaleWidth = el.clientWidth;
-      const extent = (i: number) => {
-        const center = (markers[i].pos / 100) * scaleWidth;
-        const width = labels[i].getBoundingClientRect().width;
-        if (markers[i].anchor === "start") return [center, center + width];
-        if (markers[i].anchor === "end") return [center - width, center];
-        return [center - width / 2, center + width / 2];
-      };
-      const [left, right] = [extent(0), extent(1)].sort((a, b) => a[0] - b[0]);
-      tiered = left[1] + LABEL_GUTTER > right[0];
+  const pairChart = $derived.by(() => {
+    if (!pair || !cs.result) return null;
+    const d = cs.result.gap;
+    const span = Math.max(0.3, Math.abs(d) * 1.18, CLEAR * 2.4);
+    const flat = identical || Math.abs(d) < TOO_CLOSE;
+    return {
+      pos2: identical ? 50 : (0.5 + d / (2 * span)) * 100,
+      side: flat ? "" : d > 0 ? "side-human" : "side-ai",
     };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
   });
 
-  const chart = $derived.by(() => {
-    let markers: Marker[];
-    if (pair) {
-      if (!cs.result) return null;
-      markers = identical
-        ? [{ score: 0, label: null, tier: "low", showValue: false }]
-        : [
-            { score: cs.result.first, label: "First", tier: "high", showValue: true },
-            { score: cs.result.second, label: "Second", tier: "low", showValue: true },
-          ];
-    } else {
-      if (!cs.single) return null;
-      markers = [{ score: cs.single.score, label: null, tier: "low", showValue: true }];
-    }
-    const maxAbs = Math.max(...markers.map((m) => Math.abs(m.score)));
-    const domain = pickDomain(maxAbs);
-    const pos = (s: number) => scalePos(s, domain);
-    const side = (s: number) => (Math.abs(s) < TOO_CLOSE ? "" : s > 0 ? "side-human" : "side-ai");
-    const positions = markers.map((m) => pos(m.score));
-    // Near-identical scores put the pins on top of each other; nudge them off
-    // the strip's centerline in opposite directions so both stay visible.
-    const overlapping =
-      positions.length === 2 && Math.abs(positions[0] - positions[1]) < PIN_OVERLAP;
+  /**
+   * Single chart (774fad4^): one marker floats on a fixed symmetric scale;
+   * the domain is the smallest round span that fits the score with headroom.
+   */
+  const DOMAINS = [0.2, 0.3, 0.4, 0.5, 0.75, 1];
+
+  const singleChart = $derived.by(() => {
+    if (pair || !cs.single) return null;
+    const s = cs.single.score;
+    const domain = DOMAINS.find((d) => d >= Math.abs(s) * 1.05) ?? DOMAINS[DOMAINS.length - 1];
     return {
-      // The band marks scores near zero, which answers the single-text
-      // question. In pair mode the verdict is about the gap between two
-      // scores, so the same band there would contradict it.
-      band: pair ? null : { left: pos(-TOO_CLOSE), width: pos(TOO_CLOSE) - pos(-TOO_CLOSE) },
-      ticks: ticksFor(domain),
-      markers: markers.map((m, i) => ({
-        ...m,
-        pos: positions[i],
-        anchor:
-          positions[i] < EDGE_ZONE ? "start" : positions[i] > 100 - EDGE_ZONE ? "end" : "",
-        split: overlapping ? (m.tier === "high" ? "split-up" : "split-down") : "",
-        side: side(m.score),
-      })),
+      ticks: [-domain, -domain / 2, 0, domain / 2, domain],
+      pos: (0.5 + Math.max(-1, Math.min(1, s / domain)) / 2) * 100,
+      side: Math.abs(s) < TOO_CLOSE ? "" : s > 0 ? "side-human" : "side-ai",
     };
   });
+
+  const tickLabel = (v: number) => (v > 0 ? "+" : "") + String(parseFloat(v.toFixed(3)));
 
   type Verdict =
     | { kind: "identical" }
@@ -183,16 +130,14 @@
     markStale();
   }
 
-  // If the component ever remounts with dirty text (e.g. HMR), score again.
+  // If the component ever remounts with dirty text (e.g. a tab visit), score again.
   if (ready() && !upToDate()) {
     queueRun();
   }
 
-  // Score, toggle compare, and swap — available anywhere while the library
-  // sheet is closed.
+  // Score, toggle compare, and swap — available anywhere on this tab.
   $effect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (suspended) return;
       if (!(e.ctrlKey || e.metaKey)) return;
       if (e.key === "Enter") {
         e.preventDefault();
@@ -213,7 +158,7 @@
 
   function tryExample() {
     if (library.examples.length < MIN_PAIRS) {
-      onOpenLibrary();
+      onGoExamples();
       return;
     }
     const p = library.examples[Math.floor(Math.random() * library.examples.length)];
@@ -226,114 +171,119 @@
     }
     queueRun();
   }
+
+  const fmt = (v: number) => v.toFixed(3);
 </script>
 
-<section aria-label="Detect AI writing">
+<section aria-label="Compare texts">
+  <div class="intro">
+    <p class="lede">
+      {#if pair}
+        Paste two pieces of writing and this will tell you which one sounds more like a person. It
+        compares them against each other, so it can't tell you much about one piece on its own.
+      {:else}
+        Paste a piece of writing and this will tell you how much it sounds like a person. The score
+        comes from comparing it against your own training examples.
+      {/if}
+    </p>
+    <button class="btn" onclick={tryExample} disabled={library.loading}>Try an example</button>
+  </div>
+
   <div class="inputs" class:pair>
     <div class="field">
-      {#if pair}
-        <label class="micro-label" for="det-t1">First text</label>
-      {/if}
+      <div class="field-head">
+        <label for="cmp-t1">
+          {#if pair}First text <span class="role">stays put</span>{:else}Text{/if}
+        </label>
+      </div>
       <textarea
-        id="det-t1"
-        aria-label={pair ? undefined : "Text to score"}
+        id="cmp-t1"
         bind:value={cs.first}
         oninput={onInput}
         onpaste={onPaste}
         placeholder="Paste something here."
       ></textarea>
+      <div class="meta">{wordLabel(w1)}</div>
     </div>
     {#if pair}
       <div class="field">
-        <label class="micro-label" for="det-t2">Second text</label>
+        <div class="field-head">
+          <label for="cmp-t2">Second text <span class="role">moves</span></label>
+          <button
+            class="icon-btn close-second"
+            aria-label="Back to a single text"
+            title="Back to a single text (Ctrl+\)"
+            onclick={() => setMode("single")}
+          >
+            ×
+          </button>
+        </div>
         <textarea
-          id="det-t2"
+          id="cmp-t2"
           bind:value={cs.second}
           oninput={onInput}
           onpaste={onPaste}
           placeholder="And something else here."
         ></textarea>
+        <div class="meta">{wordLabel(w2)}</div>
       </div>
     {/if}
   </div>
 
-  <div class="field-actions">
-    <div class="actions-left">
-      <div class="seg" role="group" aria-label="Number of texts">
-        <button
-          class:active={!pair}
-          aria-pressed={!pair}
-          title="Score one text (Ctrl+\ toggles)"
-          onclick={() => setMode("single")}
-        >
-          One text
-        </button>
-        <button
-          class:active={pair}
-          aria-pressed={pair}
-          title="Compare two texts (Ctrl+\ toggles)"
-          onclick={() => setMode("pair")}
-        >
-          Compare two
-        </button>
-      </div>
+  <div class="hint-row">
+    <p class="hint">
       {#if pair}
-        <button
-          class="btn btn-ghost small"
-          onclick={swap}
-          disabled={!cs.first.trim() && !cs.second.trim()}
-          title="Swap texts (Ctrl+Shift+\)"
-        >
-          <ArrowsLeftRight size={14} />
-          Swap
-        </button>
+        Fill both boxes, then press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score.
+      {:else}
+        Fill the box, then press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score.
       {/if}
-    </div>
-    <button
-      class="btn btn-ghost small"
-      onclick={tryExample}
-      disabled={library.loading}
-      title="Fill in a text from your training library"
-    >
-      <Shuffle size={14} />
-      Try an example
-    </button>
+    </p>
+    {#if pair}
+      <button
+        class="btn btn-ghost small"
+        onclick={swap}
+        disabled={!cs.first.trim() && !cs.second.trim()}
+        title="Swap texts (Ctrl+Shift+\)"
+      >
+        Swap texts
+      </button>
+    {:else}
+      <button
+        class="btn btn-ghost small"
+        onclick={() => setMode("pair")}
+        title="Compare two texts (Ctrl+\)"
+      >
+        Compare two texts
+      </button>
+    {/if}
   </div>
 
-  {#if cs.stale && !cs.scoring && calibrated}
-    <p class="rescore-hint" aria-live="polite">
-      Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score
-    </p>
-  {/if}
-
-  <div class="result" class:stale={cs.stale && calibrated && !cs.error} aria-live="polite">
+  <div class="result card" class:stale={cs.stale && calibrated && !cs.error} aria-live="polite">
     {#if !calibrated}
-      <div class="panel-note">
-        <h3 class="serif">Teach it your voice first</h3>
+      <div class="note" role="status">
         <p>
-          Litmus scores writing against your own. Add
-          {library.examples.length === 1 ? "one more pair" : "two pairs"} — an AI draft and your
-          version of the same thing — and scoring unlocks.
+          The detector needs at least {MIN_PAIRS} training pairs before it can score anything.
+          {#if library.examples.length === 1}You have one — add one more.{/if}
         </p>
-        <button class="btn btn-primary" onclick={onOpenLibrary}>
-          {library.examples.length === 1 ? "Add one more pair" : "Open the library"}
-        </button>
+        <button class="btn" onclick={onGoExamples}>Add training examples</button>
       </div>
     {:else if cs.error}
-      <ErrorPanel
-        heading="Couldn’t score that"
-        error={cs.error}
-        {onOpenLibrary}
-        onRetry={queueRun}
-      />
-    {:else if chart && verdict}
-      <p class="verdict serif">
+      <div class="note error-note" role="alert">
+        <p>{cs.error.message}</p>
+        {#if cs.error.status === 409}
+          <button class="btn" onclick={onGoExamples}>Add training examples</button>
+        {:else}
+          <button class="btn" onclick={() => queueRun()}>Try again</button>
+        {/if}
+      </div>
+    {:else if verdict && (pairChart || singleChart)}
+      <p class="verdict">
         {#if verdict.kind === "identical"}
-          You pasted the same text twice.
+          You have pasted the same text twice.
         {:else if verdict.kind === "tie"}
           {pair ? "Too close to call." : "Right on the line — hard to tell."}
         {:else if verdict.kind === "pair-call"}
-          The <span class="who human">{verdict.which}</span> text sounds {verdict.strength} more
+          The <span class="side-human-word">{verdict.which}</span> text sounds {verdict.strength} more
           human.
         {:else}
           This text sounds {verdict.strength} more
@@ -341,81 +291,86 @@
         {/if}
       </p>
 
-      <div class="chart" class:tiered>
-        <span class="micro-label pole pole-ai" aria-hidden="true">AI</span>
-        <div class="scale" bind:this={scaleEl}>
-          <div class="litmus-strip strip">
-            {#if chart.band}
-              <div
-                class="tie-band"
-                style="left: {chart.band.left}%; width: {chart.band.width}%"
-                title="Scores inside this band are too close to call"
-              ></div>
-            {/if}
-          </div>
-          {#each chart.ticks as t, i (i)}
-            <div
-              class="tick"
-              class:zero={t === 0}
-              style="left: {(i / (chart.ticks.length - 1)) * 100}%"
-              aria-hidden="true"
-            >
-              <span class="micro-label tick-num">{tickLabel(t)}</span>
+      {#if pairChart}
+        <div class="chart">
+          <div class="frame">
+            <div class="zones"></div>
+            <div class="marker m1" style="left: 50%"><div class="flag">First</div></div>
+            <div class="marker m2 {pairChart.side}" style="left: {pairChart.pos2}%">
+              <div class="flag">Second</div>
             </div>
-          {/each}
-          {#each chart.markers as m, i (i)}
-            <span class="pin {m.side} {m.split}" style="left: {m.pos}%"></span>
-            <span
-              class="pin-label {tiered && m.tier === 'high' ? 'high' : 'low'} {m.anchor}"
-              style="left: {m.pos}%"
-            >
-              {#if m.label}<span class="micro-label pin-name">{m.label}</span>{/if}
-              {#if m.showValue}<span class="pin-value">{fmtScore(m.score)}</span>{/if}
-            </span>
-          {/each}
+          </div>
+          <div class="ends">
+            <span class="left">&larr; sounds more like AI<br />than the first</span>
+            <span class="mid">anything in the middle<br />is hard to tell apart</span>
+            <span class="right">sounds more human<br />than the first &rarr;</span>
+          </div>
         </div>
-        <span class="micro-label pole pole-human" aria-hidden="true">Human</span>
-      </div>
-
-      {#if pair && verdict.kind !== "identical"}
-        <div class="result-foot">
-          {#if cs.savedPair}
-            <span class="saved-note"><Check size={14} weight="bold" /> Saved to your library</span>
-          {:else}
-            <span class="save">
-              <span class="save-label">Human version:</span>
-              <span class="seg" role="group" aria-label="Which text is the human version">
-                <button
-                  class:active={cs.saveHuman === "first"}
-                  onclick={() => (cs.saveHuman = "first")}>First</button
-                >
-                <button
-                  class:active={cs.saveHuman === "second"}
-                  onclick={() => (cs.saveHuman = "second")}>Second</button
-                >
-              </span>
-              <button class="btn btn-primary small" onclick={savePair} disabled={cs.savingPair}>
-                {#if cs.savingPair}<span class="spinner"></span>{/if}
-                Save as pair
-              </button>
-            </span>
-          {/if}
+      {:else if singleChart && cs.single}
+        <div class="single-chart">
+          <div class="plot">
+            <div class="baseline"></div>
+            {#each singleChart.ticks as t, i (i)}
+              <div
+                class="ax-tick"
+                class:zero={t === 0}
+                style="left: {(i / (singleChart.ticks.length - 1)) * 100}%"
+              >
+                <span class="ax-num">{tickLabel(t)}</span>
+              </div>
+            {/each}
+            <span class="pin {singleChart.side}" style="left: {singleChart.pos}%"></span>
+          </div>
+          <div class="axis">
+            <span class="axis-ai">More like AI</span>
+            <span class="axis-human">More human</span>
+          </div>
         </div>
       {/if}
-    {:else if cs.scoring}
-      <div class="loading-strip">
-        <span class="sr-only">Scoring…</span>
-        <div class="skeleton" aria-hidden="true"></div>
+
+      <div class="result-foot">
+        <span class="scores num">
+          {#if pair && cs.result}
+            first {fmt(cs.result.first)} &middot; second {fmt(cs.result.second)} &middot; gap
+            {cs.result.gap > 0 ? "+" : ""}{fmt(cs.result.gap)}
+          {:else if cs.single}
+            score {cs.single.score > 0 ? "+" : ""}{fmt(cs.single.score)}
+          {/if}
+        </span>
+        {#if pair && verdict.kind !== "identical"}
+          <span class="save-pair">
+            {#if cs.savedPair}
+              <span class="saved-note">Saved to training examples.</span>
+            {:else}
+              <span class="save-note">
+                Saves the <span class="side-human-word">{cs.saveHuman}</span> text as the human
+                version &middot;
+                <button
+                  class="linkish"
+                  onclick={() => (cs.saveHuman = cs.saveHuman === "first" ? "second" : "first")}
+                >
+                  switch
+                </button>
+              </span>
+              <button class="btn small" onclick={savePair} disabled={cs.savingPair}>
+                {#if cs.savingPair}<span class="spinner spinner-dark"></span>{/if}
+                Add as training pair
+              </button>
+            {/if}
+          </span>
+        {/if}
       </div>
+    {:else if cs.scoring}
+      <div class="chart"><div class="zone-skeleton"></div></div>
     {:else}
-      <div class="panel-note">
+      <div class="note">
         <p>
           {#if pair}
-            Paste two pieces of writing and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to see which one
-            sounds more like you.
+            The first text stays in the middle. The second one slides right if it sounds more like
+            a person, and left if it sounds more like AI.
           {:else}
-            Paste a piece of writing and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to see where it
-            lands between AI and your voice.
+            Paste a piece of writing and press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score it. The
+            marker shows how human it sounds.
           {/if}
         </p>
       </div>
@@ -424,10 +379,24 @@
 </section>
 
 <style>
+  .intro {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .lede {
+    max-width: 62ch;
+    color: var(--ink-secondary);
+  }
+
   .inputs {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 18px;
+    gap: 16px;
   }
 
   .inputs.pair {
@@ -437,44 +406,60 @@
   .field {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+  }
+
+  .field-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 22px;
+  }
+
+  .field-head label {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .field-head label .role {
+    font-weight: 400;
+    color: var(--ink-faint);
+  }
+
+  .close-second {
+    margin-left: auto;
+    width: 22px;
+    height: 22px;
+    font-size: 16px;
+    line-height: 1;
   }
 
   .field textarea {
-    min-height: 200px;
+    min-height: 190px;
   }
 
-  .field-actions {
+  .meta {
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hint-row {
     display: flex;
     align-items: center;
-    /* flex-end + auto margin rather than space-between: when the row wraps on
-       narrow screens the trailing button stays right-aligned. */
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: 12px;
     margin-top: 10px;
   }
 
-  .actions-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-right: auto;
-  }
-
-  /* .seg (segmented control) styles are shared — see app.css. */
-
-  .rescore-hint {
-    margin: 16px 0 0;
-    text-align: center;
-    font-size: var(--text-body);
+  .hint {
+    font-size: 12.5px;
     color: var(--ink-faint);
   }
 
   .result {
-    max-width: 700px;
-    margin: 30px auto 0;
-    padding-top: 28px;
-    border-top: 1px solid var(--border);
+    margin-top: 24px;
+    padding: 24px 24px 22px;
     transition: opacity 200ms var(--ease);
   }
 
@@ -483,13 +468,13 @@
   }
 
   .verdict {
-    font-family: var(--font-serif);
-    font-size: var(--text-display);
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    line-height: 1.35;
-    text-align: center;
-    text-wrap: balance;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+  }
+
+  .side-human-word {
+    color: var(--human);
   }
 
   .who.human {
@@ -500,70 +485,157 @@
     color: var(--ai);
   }
 
-  /* ---------- The litmus strip ---------- */
+  /* ---------- Pair chart: zone block with flag markers (745fda9) ---------- */
   .chart {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-top: 32px;
-    padding: 0 4px;
-    transition: margin-top var(--speed) var(--ease);
+    margin-top: 38px;
   }
 
-  /* Room for the raised row, added only when a label actually uses it. */
-  .chart.tiered {
-    margin-top: 64px;
+  .frame {
+    position: relative;
   }
 
-  .pole {
-    flex-shrink: 0;
-    padding-bottom: 26px; /* optically center against strip + tick numbers */
+  .zones {
+    position: relative;
+    height: 46px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: linear-gradient(
+      to right,
+      var(--ai-soft),
+      var(--zone-quiet) 44% 56%,
+      var(--human-soft)
+    );
   }
 
-  .pole-ai {
+  .marker {
+    position: absolute;
+    top: -14px;
+    bottom: -14px;
+    width: 2px;
+    transform: translateX(-1px);
+    background: var(--ink-secondary);
+  }
+
+  .marker.m2 {
+    transition:
+      left 420ms var(--ease),
+      background-color 200ms var(--ease);
+  }
+
+  .marker.m2.side-ai {
+    background: var(--ai);
+  }
+
+  .marker.m2.side-human {
+    background: var(--human);
+  }
+
+  .flag {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 5px;
+    color: #fff;
+    background: var(--ink-secondary);
+  }
+
+  .marker.m1 .flag {
+    bottom: calc(100% + 5px);
+  }
+
+  .marker.m2 .flag {
+    top: calc(100% + 5px);
+  }
+
+  .marker.m2.side-ai .flag {
+    background: var(--ai);
+  }
+
+  .marker.m2.side-human .flag {
+    background: var(--human);
+  }
+
+  /* Clearance below the bar for the Second flag, which hangs under it. */
+  .ends {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    margin-top: 48px;
+    font-size: 12px;
+    color: var(--ink-secondary);
+  }
+
+  .ends .left {
     color: var(--ai);
   }
 
-  .pole-human {
+  .ends .mid {
+    color: var(--ink-faint);
+    text-align: center;
+  }
+
+  .ends .right {
+    text-align: right;
     color: var(--human);
   }
 
-  .scale {
+  /* ---------- Single chart: baseline with a dot pin (774fad4^) ---------- */
+  .single-chart {
+    margin-top: 10px;
+    padding: 50px 8px 0;
+  }
+
+  .plot {
     position: relative;
-    flex: 1;
-    padding-bottom: 26px;
+    height: 1px;
   }
 
-  /* The strip's look is the shared .litmus-strip (app.css); only the
-     tie-band clipping is local. */
-  .strip {
-    overflow: hidden;
+  .baseline {
+    position: absolute;
+    inset: 0;
+    background: var(--border-strong);
   }
 
-  /* The too-close-to-call zone: neutral paper, dashed edges. */
-  .tie-band {
+  .ax-tick {
     position: absolute;
     top: 0;
-    bottom: 0;
-    background: var(--surface);
-    border-left: 1px dashed var(--border-strong);
-    border-right: 1px dashed var(--border-strong);
+    width: 1px;
+    height: 7px;
+    background: var(--border-strong);
+    transform: translateX(-0.5px);
   }
 
-  /* .tick / .tick-num are shared with the map's axis view — see app.css. */
+  .ax-tick.zero {
+    height: 11px;
+    background: var(--ink-faint);
+  }
+
+  .ax-num {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
 
   .pin {
     position: absolute;
-    top: 7px; /* strip center: 12px strip + 1px borders */
-    width: 15px;
-    height: 15px;
+    top: 0;
+    width: 13px;
+    height: 13px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
     background: var(--ink-secondary);
-    border: 2.5px solid var(--surface);
-    box-shadow: 0 1px 4px hsl(var(--ink-hsl) / 0.3);
+    border: 2px solid var(--surface);
+    box-shadow: 0 1px 4px rgba(33, 31, 28, 0.25);
     transition:
-      left var(--speed-slow) var(--ease),
+      left 420ms var(--ease),
       background 200ms var(--ease);
   }
 
@@ -575,117 +647,124 @@
     background: var(--human);
   }
 
-  /* Coincident scores: straddle the strip so both dots stay readable. */
-  .pin.split-up {
-    top: 0;
+  .axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 44px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
   }
 
-  .pin.split-down {
-    top: 14px;
+  .axis-ai {
+    color: var(--ai);
   }
 
-  .pin-label {
-    position: absolute;
-    transform: translateX(-50%);
-    display: inline-flex;
-    align-items: baseline;
-    gap: 5px;
-    white-space: nowrap;
-    transition: left var(--speed-slow) var(--ease);
-  }
-
-  /* Near an end there is no room to center on the pin, so the label hangs from
-     the pin's side instead — still attached, never off the axis. */
-  .pin-label.start {
-    transform: translateX(0);
-  }
-
-  .pin-label.end {
-    transform: translateX(-100%);
-  }
-
-  .pin-label.low {
-    bottom: calc(100% + 12px);
-  }
-
-  /* 24px of clearance: the tiers were within a pixel of touching at 18px. */
-  .pin-label.high {
-    bottom: calc(100% + 36px);
-  }
-
-  /* The value is the measurement, the name is scaffolding — so the number
-     carries the weight and the label recedes to the axis's own colour. */
-  .pin-name {
-    font-weight: 500;
-    color: var(--ink-faint);
-  }
-
-  .pin-value {
-    font-size: var(--text-micro);
-    color: var(--ink-2);
-    font-variant-numeric: tabular-nums;
+  .axis-human {
+    color: var(--human);
   }
 
   /* ---------- Result footer ---------- */
   .result-foot {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    /* Holds the row's height when the save controls become a one-line note. */
-    min-height: 28px;
+    justify-content: space-between;
     gap: 14px;
     flex-wrap: wrap;
-    margin-top: 32px;
-    padding-top: 16px;
+    margin-top: 18px;
+    padding-top: 14px;
     border-top: 1px solid var(--border);
   }
 
-  .save {
+  .scores {
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .save-pair {
     display: inline-flex;
     align-items: center;
-    gap: 9px;
+    gap: 10px;
     flex-wrap: wrap;
   }
 
-  .save-label {
-    font-size: var(--text-body);
-    color: var(--ink-secondary);
-  }
-
+  .save-note,
   .saved-note {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: var(--text-body);
-    font-weight: 500;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+
+  .linkish {
+    appearance: none;
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: inherit;
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .note,
+  .error-note {
+    padding: 30px 0 26px;
+    text-align: center;
+  }
+
+  .note p,
+  .error-note p {
+    margin: 0 auto;
+    max-width: 48ch;
     color: var(--ink-secondary);
+    font-size: 14px;
   }
 
-  /* ---------- Notes & states ---------- */
-  /* The panel itself is shared (app.css); the result column owns its spacing,
-     which is tighter than in a card because the rule above already separates. */
-  .result :global(.panel-note) {
-    padding: 20px 0 16px;
+  .note .btn,
+  .error-note .btn {
+    margin-top: 14px;
   }
 
-  .loading-strip {
-    padding: 74px 22px 46px;
+  .error-note p {
+    color: var(--human);
   }
 
-  /* Stands in for the litmus strip while scoring: same shape, no reading. */
-  .skeleton {
-    height: 12px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
+  .zone-skeleton {
+    height: 46px;
+    border-radius: 6px;
+    background: var(--zone-quiet);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .zone-skeleton {
+      animation: pulse 1.3s ease-in-out infinite;
+    }
+  }
+
+  @keyframes pulse {
+    50% {
+      opacity: 0.55;
+    }
   }
 
   @media (max-width: 760px) {
     .inputs.pair {
       grid-template-columns: 1fr;
     }
+  }
 
-    .field-actions {
-      flex-wrap: wrap;
+  @media (max-width: 700px) {
+    .ends {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .ends .mid {
+      display: none;
     }
   }
 </style>

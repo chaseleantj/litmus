@@ -1,57 +1,32 @@
 <script lang="ts">
-  import { Books } from "phosphor-svelte";
+  // Legacy reassembly: header, tab bar and shell restored from 745fda9
+  // (masthead + tagline, underline tabs, full-width mock banner, 1060px
+  // shell), with a third tab for the newer Visualization view.
   import { mockActive } from "./lib/api";
-  import { compareState } from "./lib/compareState.svelte";
   import DetectView from "./lib/DetectView.svelte";
-  import LibrarySheet from "./lib/LibrarySheet.svelte";
+  import ExamplesView from "./lib/ExamplesView.svelte";
   import MapView from "./lib/MapView.svelte";
   import Toasts from "./lib/Toasts.svelte";
   import { loadLibrary } from "./lib/library.svelte";
 
-  type View = "detect" | "map";
+  type Tab = "examples" | "compare" | "map";
 
-  // "#/examples" is the pre-redesign URL for the library.
-  function libraryFromHash(): boolean {
-    return location.hash === "#/library" || location.hash === "#/examples";
-  }
-
-  function viewFromHash(): View | null {
+  function tabFromHash(): Tab {
+    if (location.hash === "#/compare") return "compare";
     if (location.hash === "#/map") return "map";
-    if (location.hash === "" || location.hash === "#/" || location.hash === "#") return "detect";
-    return null; // library hashes say nothing about the view underneath
+    return "examples";
   }
 
-  let view = $state<View>(viewFromHash() ?? "detect");
-  let libraryOpen = $state(libraryFromHash());
-  let opener: HTMLElement | null = null;
+  let tab = $state<Tab>(tabFromHash());
 
-  const viewHash = () => (view === "map" ? "#/map" : "#/");
-
-  function setView(next: View) {
-    if (view === next) return;
-    view = next;
-    history.replaceState(null, "", viewHash());
-  }
-
-  function openLibrary() {
-    opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    libraryOpen = true;
-    history.replaceState(null, "", "#/library");
-  }
-
-  function closeLibrary() {
-    libraryOpen = false;
-    history.replaceState(null, "", viewHash());
-    opener?.focus();
-    opener = null;
+  function goTo(next: Tab) {
+    tab = next;
+    const hash = next === "compare" ? "#/compare" : next === "map" ? "#/map" : "#/examples";
+    history.replaceState(null, "", hash);
   }
 
   $effect(() => {
-    const onHash = () => {
-      libraryOpen = libraryFromHash();
-      const next = viewFromHash();
-      if (next !== null) view = next;
-    };
+    const onHash = () => (tab = tabFromHash());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   });
@@ -59,163 +34,128 @@
   loadLibrary();
 </script>
 
-<!-- The shell owns the app's column width; comparing two texts needs the
-     wider one, so the header rule always spans exactly the work beneath it. -->
-<div class="shell" class:wide={view === "map" || compareState.mode === "pair"}>
+<div class="shell">
   <header>
-    <div class="brand">
-      <h1 class="wordmark serif">Litmus</h1>
-      <p class="tagline">A personal test for AI-sounding writing.</p>
+    <div class="masthead">
+      <h1>Write like me</h1>
+      <p class="tagline">Teach it your voice, then hear which text sounds more human.</p>
     </div>
-    <div class="header-side">
-      {#if $mockActive}
-        <span class="mock-note" role="status">Sample data — changes aren’t saved</span>
-      {/if}
-      <nav class="seg" aria-label="View">
-        <button
-          class:active={view === "detect"}
-          aria-current={view === "detect" ? "page" : undefined}
-          title="Score a text against your voice"
-          onclick={() => setView("detect")}
-        >
-          Detect
-        </button>
-        <button
-          class:active={view === "map"}
-          aria-current={view === "map" ? "page" : undefined}
-          title="See your whole library as a map"
-          onclick={() => setView("map")}
-        >
-          Visualization
-        </button>
-      </nav>
+    <nav aria-label="Views">
       <button
-        class="btn"
-        onclick={openLibrary}
-        title="Open the training library — the pairs Litmus measures against"
+        class:active={tab === "examples"}
+        aria-current={tab === "examples" ? "page" : undefined}
+        onclick={() => goTo("examples")}
       >
-        <Books size={15} />
-        Calibrate
+        Training examples
       </button>
-    </div>
+      <button
+        class:active={tab === "compare"}
+        aria-current={tab === "compare" ? "page" : undefined}
+        onclick={() => goTo("compare")}
+      >
+        Compare
+      </button>
+      <button
+        class:active={tab === "map"}
+        aria-current={tab === "map" ? "page" : undefined}
+        onclick={() => goTo("map")}
+      >
+        Visualization
+      </button>
+    </nav>
+    {#if $mockActive}
+      <div class="mock-banner" role="status">
+        Backend unreachable — running on sample data. Changes are not saved.
+      </div>
+    {/if}
   </header>
-  <div class="header-rule" aria-hidden="true"></div>
 
   <main>
-    {#if view === "detect"}
-      <DetectView onOpenLibrary={openLibrary} suspended={libraryOpen} />
+    {#if tab === "examples"}
+      <ExamplesView onGoCompare={() => goTo("compare")} />
+    {:else if tab === "compare"}
+      <DetectView onGoExamples={() => goTo("examples")} />
     {:else}
-      <MapView onOpenLibrary={openLibrary} />
+      <MapView onOpenLibrary={() => goTo("examples")} />
     {/if}
   </main>
 </div>
 
-<LibrarySheet open={libraryOpen} onClose={closeLibrary} />
 <Toasts />
 
 <style>
   .shell {
-    --column: 700px;
-    --gutter: 24px;
-    max-width: calc(var(--column) + var(--gutter) * 2);
-    min-height: 100dvh;
+    max-width: 1060px;
     margin: 0 auto;
-    padding: 0 var(--gutter) 48px;
-    display: flex;
-    flex-direction: column;
-    transition: max-width var(--speed-slow) var(--ease);
+    padding: 28px 20px 64px;
   }
 
-  .shell.wide {
-    --column: 920px;
-  }
-
-  /* The header travels with the work rather than pinning to the window, so
-     the wordmark, its rule and the text box read as one block. The auto
-     margins here and on main centre that block together. */
-  header {
-    margin-top: auto;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 26px 0 14px;
-  }
-
-  .brand {
-    display: flex;
-    align-items: baseline;
-    gap: 14px;
-    min-width: 0;
-  }
-
-  .wordmark {
-    font-size: var(--text-display);
-    font-style: italic;
-    line-height: 1.2;
+  .masthead h1 {
+    font-size: 23px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
   }
 
   .tagline {
-    font-size: var(--text-body);
     color: var(--ink-secondary);
-    white-space: nowrap;
+    margin-top: 2px;
   }
 
-  .header-side {
+  nav {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    gap: 4px;
+    margin-top: 20px;
+    border-bottom: 1px solid var(--border);
   }
 
-  .mock-note {
-    font-size: var(--text-body);
+  nav button {
+    appearance: none;
+    border: none;
+    background: none;
+    padding: 9px 14px;
     font-weight: 500;
-    color: var(--human);
-    white-space: nowrap;
+    color: var(--ink-secondary);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color var(--speed) var(--ease);
   }
 
-  /* The app's signature in one hairline: the litmus scale itself. */
-  .header-rule {
-    height: 2px;
-    border-radius: 999px;
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--ai) 55%, transparent),
-      color-mix(in srgb, var(--border-strong) 70%, transparent) 38%,
-      color-mix(in srgb, var(--border-strong) 70%, transparent) 62%,
-      color-mix(in srgb, var(--human) 55%, transparent)
-    );
+  nav button:hover {
+    color: var(--ink);
   }
 
-  /* The work sits in the middle of whatever room is left under the header,
-     so a page with no result yet reads as a composition rather than as
-     content stranded at the top of an empty window. Auto margins rather than
-     justify-content: a tall result then overflows downward, never upward. */
+  nav button.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  nav button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: 4px;
+  }
+
+  .mock-banner {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    background: #fdf3e0;
+    border: 1px solid #ecd9ad;
+    color: #7a5b17;
+    font-size: 13px;
+  }
+
   main {
-    margin-bottom: auto;
-    padding-top: 40px;
-    /* Biases the block upward: sitting on the true centre line reads low. */
-    padding-bottom: 6vh;
+    margin-top: 24px;
   }
 
-  /* Below this the tagline starts crowding the header pills. */
-  @media (max-width: 920px) {
-    .tagline {
-      display: none;
-    }
-  }
-
-  @media (max-width: 560px) {
+  @media (max-width: 480px) {
     .shell {
-      padding: 0 16px 56px;
+      padding: 20px 14px 48px;
     }
 
-    .mock-note {
-      display: none;
-    }
-
-    main {
-      padding-top: 28px;
+    .masthead h1 {
+      font-size: 20px;
     }
   }
 </style>

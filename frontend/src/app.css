@@ -1,65 +1,53 @@
-/* ---------- Design tokens (Paper & ink) ----------
-   Litmus reads like a well-set lab notebook: warm paper ground, ink
-   typography, and exactly two semantic hues — indigo for AI, ember for
-   human. Fraunces (serif) carries identity: the wordmark, verdicts and
-   panel titles. Manrope carries the UI. Nothing else gets color. */
+/* ---------- Design tokens ---------- */
+/* Legacy reassembly: tokens and shared components restored verbatim from
+   745fda9 (the original "Write like me" app), plus a compat section at the
+   end for the newer feature components this build keeps. */
 :root {
-  /* Ink and border carry their raw components too: shadows, backdrops and
-     hover tints are the same colour at low alpha, and must stay that way. */
-  --ink-hsl: 30 25% 12%;
-  --border-hsl: 42 18% 86.5%;
+  --bg: #fbfaf8;
+  --surface: #ffffff;
+  --surface-muted: #f0eeea;
+  --border: #e2dfd9;
+  --border-strong: #c6c2ba;
+  --ink: #211f1c;
+  --ink-secondary: #635f58;
+  --ink-faint: #8d8880;
 
-  --paper: hsl(45 33% 96%);
-  --surface: hsl(45 45% 99%);
-  --surface-muted: hsl(45 25% 93%);
-  --border: hsl(var(--border-hsl));
-  --border-strong: hsl(42 15% 76%);
-  --ink: hsl(var(--ink-hsl));
-  --ink-2: hsl(30 14% 27%);
-  /* Both clear 4.5:1 on --paper with margin to spare. --ink-faint carries the
-     chart's numeric readout and the "Show more" control, so it is held to the
-     same bar as body copy rather than treated as decoration. */
-  --ink-secondary: hsl(30 9% 41%);
-  --ink-faint: hsl(32 8% 43%);
+  --accent: #1f5f8b;
+  --accent-hover: #17496c;
+  --accent-soft: #e3edf4;
 
-  /* The wash under a hovered ghost control */
-  --tint: hsl(var(--border-hsl) / 0.55);
+  --ai: #1f5f8b;
+  --ai-soft: #e3edf4;
+  --human: #b0561f;
+  --human-soft: #f6e8dc;
+  --zone-quiet: #f0eeea;
 
-  /* The two poles of the litmus scale */
-  --ai: hsl(248 45% 50%);
-  --human: hsl(19 72% 42%);
+  --danger: #b23a2f;
+  --danger-soft: #f9ebe9;
 
-  --danger: hsl(2 64% 45%);
-  --danger-soft: hsl(6 60% 96%);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 2px rgba(33, 31, 28, 0.05);
+  --font-serif: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --speed: 160ms;
 
-  /* Shape rule: sheet/cards 12px, controls 8px, small controls 6px */
-  --radius: 12px;
-  --radius-sm: 8px;
-  --radius-xs: 6px;
-
-  --shadow-sheet:
-    0 24px 48px -12px hsl(var(--ink-hsl) / 0.18),
-    0 4px 12px -4px hsl(var(--ink-hsl) / 0.08);
-  --shadow-toast:
-    0 10px 24px -6px hsl(var(--ink-hsl) / 0.25),
-    0 2px 6px -2px hsl(var(--ink-hsl) / 0.12);
-
-  --font-sans: "Manrope", system-ui, "Segoe UI", Roboto, sans-serif;
-  --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
-
-  /* Type scale. Every step is visibly different from its neighbours.
-     One identity size covers the wordmark and the verdict. */
-  --text-micro: 11px; /* labels, axis ticks, pin values */
-  --text-body: 13px; /* UI: controls, prose, list text, row metadata */
-  --text-content: 15px; /* the writing itself — the text under examination */
-  --text-title: 21px; /* sheet, panel and editor headings */
-  --text-display: 24px; /* wordmark and verdict */
-
-  --speed: 150ms;
+  /* Compat tokens for the kept feature components (map, toasts, histogram),
+     mapped onto the legacy palette above. */
+  --ink-hsl: 34 8% 12%;
+  --paper: var(--bg);
+  --ink-2: #46433e;
+  --tint: #eceae5;
+  --radius-xs: 4px;
+  --text-micro: 11px;
+  --text-body: 13px;
+  --text-content: 15px;
+  --text-title: 20px;
+  --text-display: 23px;
   --speed-slow: 420ms;
-  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
-
-  color-scheme: light;
+  --shadow-toast: 0 6px 20px rgba(33, 31, 28, 0.25);
 }
 
 /* ---------- Reset & base ---------- */
@@ -71,11 +59,10 @@
 
 body {
   margin: 0;
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: var(--text-body);
-  font-weight: 500;
+  font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
@@ -98,29 +85,17 @@ input {
   color: inherit;
 }
 
-/* The serif voice: verdicts, titles, the wordmark */
-.serif {
-  font-family: var(--font-serif);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  font-variation-settings: "SOFT" 0, "WONK" 0;
-}
-
-/* ---------- Buttons (flat, bordered — no shadows) ---------- */
+/* ---------- Shared components ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  height: 36px;
-  padding: 0 14px;
+  padding: 7px 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: var(--surface);
-  color: var(--ink-2);
-  font-size: var(--text-body);
+  color: var(--ink);
   font-weight: 500;
-  white-space: nowrap;
   transition:
     background var(--speed) var(--ease),
     border-color var(--speed) var(--ease),
@@ -129,8 +104,6 @@ input {
 
 .btn:hover:not(:disabled) {
   background: var(--surface-muted);
-  border-color: var(--border-strong);
-  color: var(--ink);
 }
 
 .btn:disabled {
@@ -139,184 +112,163 @@ input {
 }
 
 .btn-primary {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: hsl(var(--ink-hsl) / 0.88);
-  border-color: transparent;
-  color: var(--paper);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .btn-danger {
-  background: var(--surface);
-  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
-  color: var(--danger);
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: var(--danger-soft);
-  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
-  color: var(--danger);
+  background: #93291f;
+  border-color: #93291f;
 }
 
 .btn-ghost {
   border-color: transparent;
   background: transparent;
-  color: var(--ink-2);
+  color: var(--ink-secondary);
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: var(--tint);
-  border-color: transparent;
-  color: var(--ink);
-}
-
-/* The one small size: 28px tall, shared by .btn.small, .icon-btn and the
-   segmented control, so any row of controls lines up without adjustment. */
-.btn.small {
-  height: 28px;
-  padding: 0 10px;
-  font-size: var(--text-body);
-  border-radius: var(--radius-xs);
-  gap: 5px;
-}
-
-/* Segmented control: mode switches (one/two texts, map/axis, view tabs).
-   Sized to the 28px small-control height so it sits level with .btn.small. */
-.seg {
-  display: inline-flex;
-  padding: 1px;
-  gap: 2px;
   background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-
-.seg button {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  /* 24px is the WCAG 2.2 minimum target; the track stays 28px overall. */
-  height: 24px;
-  border: none;
-  background: none;
-  border-radius: var(--radius-xs);
-  padding: 0 11px;
-  font-size: var(--text-body);
-  /* Same weight in both states: the active half is marked by its raised
-     surface and darker ink, and a weight change would reflow the track. */
-  font-weight: 500;
-  line-height: 1;
-  color: var(--ink-secondary);
-  transition:
-    color var(--speed) var(--ease),
-    background var(--speed) var(--ease),
-    box-shadow var(--speed) var(--ease);
-}
-
-.seg button:hover:not(.active) {
   color: var(--ink);
 }
 
-.seg button.active {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: 0 1px 2px hsl(var(--ink-hsl) / 0.08);
-}
-
-.seg button:focus-visible {
-  outline-offset: 1px;
-}
-
-/* Square icon-only ghost button for row actions */
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: var(--radius-xs);
-  background: transparent;
-  color: var(--ink-2);
-  transition:
-    background var(--speed) var(--ease),
-    color var(--speed) var(--ease);
-}
-
-.icon-btn:hover:not(:disabled) {
-  background: var(--tint);
-  color: var(--ink);
-}
-
-.icon-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.btn.small {
+  padding: 4px 10px;
+  font-size: 13px;
 }
 
 .btn:focus-visible,
-.icon-btn:focus-visible,
+textarea:focus-visible,
 a:focus-visible,
 button:focus-visible {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* ---------- Inputs ---------- */
 textarea {
   width: 100%;
-  font-size: var(--text-content);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  padding: 12px 14px;
-  line-height: 1.6;
+  padding: 10px 12px;
   resize: vertical;
-  transition:
-    border-color var(--speed) var(--ease),
-    box-shadow var(--speed) var(--ease);
-}
-
-textarea::placeholder {
-  color: var(--ink-faint);
+  line-height: 1.55;
 }
 
 textarea:focus {
   outline: none;
-  border-color: var(--ink-2);
-  box-shadow: 0 0 0 3px hsl(var(--ink-hsl) / 0.08);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-textarea:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* Version tags shared by list cards, editor, and compare labels */
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
 }
 
-/* ---------- Surfaces & shared bits ---------- */
+.tag-ai {
+  background: var(--ai-soft);
+  color: var(--ai);
+}
+
+.tag-human {
+  background: var(--human-soft);
+  color: var(--human);
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
-/* The one small-label style: every caption, column header, axis label and
-   count uses this, so pages carry exactly three text roles —
-   serif display, body, micro. */
+/* Empty / error panels share one look */
+.panel-note {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--ink-secondary);
+}
+
+.panel-note h3 {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.panel-note p {
+  max-width: 46ch;
+  margin: 0 auto 16px;
+}
+
+.panel-note .error-text {
+  color: var(--danger);
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.spinner-dark {
+  border-color: var(--border-strong);
+  border-top-color: var(--accent);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Compat classes ----------
+   Shared classes the kept feature components (MapView, Toasts, ErrorPanel,
+   LibraryHistogram, keyboard hints) rely on, restyled with legacy tokens. */
+.serif {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
 .micro-label {
   font-size: var(--text-micro);
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
   color: var(--ink-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-/* The AI / Human marker: a micro-label with a colored dot. Used for the
-   library's column headers, its stacked mobile labels, and the editor's
-   field labels — one style, so a side is marked the same way everywhere. */
 .dot-marker {
   display: inline-flex;
   align-items: center;
@@ -339,20 +291,6 @@ textarea:disabled {
   background: var(--human);
 }
 
-/* Where a header row already labels both columns, the per-field markers stay
-   hidden until the columns stack. One breakpoint owns that decision for the
-   library list and the editor alike. */
-.dot-marker.stacked-only {
-  display: none;
-}
-
-@media (max-width: 720px) {
-  .dot-marker.stacked-only {
-    display: inline-flex;
-  }
-}
-
-/* Present to assistive tech, absent from the page */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -362,66 +300,80 @@ textarea:disabled {
   white-space: nowrap;
 }
 
-/* Keyboard keys, quoted inline */
 kbd {
   display: inline-block;
   padding: 1px 5px;
   font-family: inherit;
-  font-size: var(--text-micro);
+  font-size: 11.5px;
+  font-weight: 500;
   color: var(--ink-secondary);
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
   border-bottom-width: 2px;
   border-radius: var(--radius-xs);
 }
 
-/* Empty, error and not-ready-yet panels — one look wherever they appear.
-   Spacing around the panel belongs to its container, so the same block reads
-   correctly as a card in the library and as a bare note under the result. */
-.panel-note {
-  text-align: center;
-  color: var(--ink-secondary);
+.seg {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
-.card.panel-note {
-  padding: 44px 32px;
-}
-
-.panel-note h3 {
-  font-family: var(--font-serif);
-  font-size: var(--text-title);
+.seg button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-xs);
+  padding: 2px 10px;
+  font-size: 12px;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+  transition:
+    color var(--speed) var(--ease),
+    background var(--speed) var(--ease);
+}
+
+.seg button:hover:not(.active) {
   color: var(--ink);
-  margin-bottom: 8px;
 }
 
-.panel-note p {
-  max-width: 48ch;
-  margin: 0 auto;
-  font-size: var(--text-body);
-  line-height: 1.6;
+.seg button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
-.panel-note .error-text {
-  color: var(--danger);
+.seg button:focus-visible {
+  outline-offset: 1px;
 }
 
-.panel-note > .btn,
-.panel-note > .panel-actions {
-  margin-top: 18px;
-}
-
-.panel-actions {
-  display: flex;
-  gap: 8px;
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--ink-secondary);
+  transition:
+    background var(--speed) var(--ease),
+    color var(--speed) var(--ease);
 }
 
-/* The litmus scale itself: AI indigo fading through paper into human ember.
-   One definition — the Detect result chart and the map's axis view must
-   always be the same scale to the eye. */
+.icon-btn:hover:not(:disabled) {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+/* The shared strip and tick ladder used by the map's axis view. */
 .litmus-strip {
   position: relative;
   height: 12px;
@@ -429,17 +381,12 @@ kbd {
   border: 1px solid var(--border);
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--ai) 52%, var(--surface)),
-    color-mix(in srgb, var(--ai) 14%, var(--surface)) 40%,
-    var(--surface) 50%,
-    color-mix(in srgb, var(--human) 14%, var(--surface)) 60%,
-    color-mix(in srgb, var(--human) 52%, var(--surface))
+    var(--ai-soft),
+    var(--zone-quiet) 44% 56%,
+    var(--human-soft)
   );
 }
 
-/* The strip's tick ladder. Lives here with the strip: both scales must mark
-   the same places the same way, and the offsets below are measured from the
-   strip's own height. Consumers position each tick with `left`. */
 .tick {
   position: absolute;
   top: 16px;
@@ -461,7 +408,6 @@ kbd {
   color: var(--ink-faint);
 }
 
-/* Loading placeholder: the consumer sets the shape, this sets the shimmer. */
 .skeleton {
   background: linear-gradient(
     90deg,
@@ -479,32 +425,6 @@ kbd {
   }
   to {
     background-position: -200% 0;
-  }
-}
-
-.spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid hsl(45 33% 96% / 0.35);
-  border-top-color: var(--paper);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-.spinner-dark {
-  border-color: var(--border-strong);
-  border-top-color: var(--ink-secondary);
-}
-
-.btn-danger .spinner {
-  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
-  border-top-color: var(--danger);
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
   }
 }
 
