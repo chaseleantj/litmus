@@ -119,9 +119,28 @@ class CompareIn(BaseModel):
         return valid_text(v)
 
 
+class SentenceOut(BaseModel):
+    """One sentence of a scored text: where it sits in the text and how it reads
+    on its own. Offsets are UTF-16 code units, the way JavaScript indexes a
+    string, so the client can slice with them directly."""
+
+    start: int
+    end: int
+    score: float
+
+
+class TextScoreOut(BaseModel):
+    """A scored text. `score` is the whole-text score the product is built on;
+    `sentences` is the reading beside it, and is empty for a text of one
+    sentence (scoring.score_text explains why)."""
+
+    score: float
+    sentences: list[SentenceOut]
+
+
 class CompareOut(BaseModel):
-    first: float
-    second: float
+    first: TextScoreOut
+    second: TextScoreOut
     gap: float
 
 
@@ -132,10 +151,6 @@ class ScoreIn(BaseModel):
     @classmethod
     def non_empty(cls, v: str) -> str:
         return valid_text(v)
-
-
-class ScoreOut(BaseModel):
-    score: float
 
 
 # Enough of a text for a map tooltip; the full versions live in the library.
@@ -268,17 +283,18 @@ def compare_texts(body: CompareIn, db: Session = Depends(get_db)):
     require_calibrated(db)
     # Asked before any direction is learned: scoring.same_text explains why.
     if scoring.same_text(body.first, body.second):
-        return CompareOut(first=0.0, second=0.0, gap=0.0)
+        blank = TextScoreOut(score=0.0, sentences=[])
+        return CompareOut(first=blank, second=blank, gap=0.0)
     api_key, direction = api_key_and_direction(db)
     with scoring_errors():
         return scoring.compare(body.first, body.second, direction, api_key)
 
 
-@app.post("/api/score", response_model=ScoreOut)
+@app.post("/api/score", response_model=TextScoreOut)
 def score_text(body: ScoreIn, db: Session = Depends(get_db)):
     api_key, direction = api_key_and_direction(db)
     with scoring_errors():
-        return scoring.score_one(body.text, direction, api_key)
+        return scoring.score_text(body.text, direction, api_key)
 
 
 # Same rationale as _direction_lock: the map is a multi-second computation

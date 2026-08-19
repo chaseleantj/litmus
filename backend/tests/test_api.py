@@ -127,7 +127,8 @@ def test_compare_validation(client, fake_embed):
 def test_compare_identical_short_circuits(client, fake_embed):
     r = client.post("/api/compare", json={"first": " same ", "second": "same"})
     assert r.status_code == 200
-    assert r.json() == {"first": 0.0, "second": 0.0, "gap": 0.0}
+    blank = {"score": 0.0, "sentences": []}
+    assert r.json() == {"first": blank, "second": blank, "gap": 0.0}
     assert fake_embed.calls == 0  # no embedding call at all
 
 
@@ -136,8 +137,10 @@ def test_compare_returns_scores(client, fake_embed):
     assert r.status_code == 200
     body = r.json()
     assert set(body) == {"first", "second", "gap"}
-    assert abs(body["gap"] - (body["second"] - body["first"])) < 1e-9
-    # one call to learn the direction, one for the two compared texts
+    gap = body["second"]["score"] - body["first"]["score"]
+    assert abs(body["gap"] - gap) < 1e-9
+    # one call to learn the direction, one for both compared texts and their
+    # sentences together
     assert fake_embed.calls == 2
 
 
@@ -196,10 +199,62 @@ def test_score_returns_score(client, fake_embed):
     r = client.post("/api/score", json={"text": "hello there"})
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == {"score"}
+    assert set(body) == {"score", "sentences"}
     assert isinstance(body["score"], float)
+    # A one-sentence text has nothing to compare its sentences against.
+    assert body["sentences"] == []
     # one call to learn the direction, one for the scored text
     assert fake_embed.calls == 2
+
+
+SENTENCES_TEXT = (
+    "The migration finished on Friday afternoon. "
+    "Two indexes still need rebuilding, which I will pick up on Monday. "
+    "Ping me if the dashboards look wrong."
+)
+
+
+def test_score_returns_one_span_per_sentence(client, fake_embed):
+    body = client.post("/api/score", json={"text": SENTENCES_TEXT}).json()
+    spans = body["sentences"]
+    assert [SENTENCES_TEXT[s["start"] : s["end"]] for s in spans] == [
+        "The migration finished on Friday afternoon.",
+        "Two indexes still need rebuilding, which I will pick up on Monday.",
+        "Ping me if the dashboards look wrong.",
+    ]
+    assert all(isinstance(s["score"], float) for s in spans)
+    # Spans stay in reading order and never overlap, so the client can paint
+    # them straight onto the text.
+    assert all(a["end"] <= b["start"] for a, b in zip(spans, spans[1:]))
+    # The reading rides along on the same request as the score.
+    assert fake_embed.calls == 2
+
+
+def test_score_of_a_multi_sentence_text_is_still_the_whole_text_score(
+    client, fake_embed
+):
+    """The sentences are carried beside the score, not folded into it: the axis
+    view embeds each text once and whole, and must agree with the detector."""
+    example = add(client, "an ai draft here", SENTENCES_TEXT)
+    scored = client.post("/api/score", json={"text": SENTENCES_TEXT}).json()
+    assert len(scored["sentences"]) == 3
+    map_scores = {
+        (p["pair_id"], p["role"]): p["score"]
+        for p in client.get("/api/map").json()["points"]
+    }
+    assert abs(map_scores[(example["id"], "human")] - scored["score"]) < 1e-9
+
+
+def test_sentence_offsets_are_utf16_code_units(client, fake_embed):
+    """JavaScript indexes strings in UTF-16 code units, so an emoji must not
+    shift every highlight after it."""
+    text = "Shipped it 🎉 and the graphs look right. Second line, no drama here."
+    spans = client.post("/api/score", json={"text": text}).json()["sentences"]
+    units = text.encode("utf-16-le")
+    sliced = [
+        units[s["start"] * 2 : s["end"] * 2].decode("utf-16-le") for s in spans
+    ]
+    assert sliced == ["Shipped it 🎉 and the graphs look right.", "Second line, no drama here."]
 
 
 def test_scores_are_centered_on_the_class_midpoint(client, fake_embed):

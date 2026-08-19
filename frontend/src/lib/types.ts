@@ -23,8 +23,19 @@ export interface ImportResult {
   total: number;
 }
 
-export interface ScoreResult {
+/** One sentence of a scored text: where it sits in the text and how it reads on
+ *  its own. Offsets are UTF-16 code units, so they slice a JS string directly. */
+export interface SentenceScore {
+  start: number;
+  end: number;
   score: number;
+}
+
+/** A scored text. `score` is the whole-text score every verdict is built on;
+ *  `sentences` is the reading beside it, empty for a one-sentence text. */
+export interface TextScore {
+  score: number;
+  sentences: SentenceScore[];
 }
 
 export interface MapPoint {
@@ -45,7 +56,7 @@ export interface MapResult {
 }
 
 export interface CompareResult {
-  first: number;
-  second: number;
+  first: TextScore;
+  second: TextScore;
   gap: number;
 }

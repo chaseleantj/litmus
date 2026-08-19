@@ -100,6 +100,37 @@ function score(text: string): number {
   return (h % 4000) / 10000 - 0.2;
 }
 
+/** app/scoring.py's MIN_SENT_CHARS. */
+const MIN_SENT_CHARS = 15;
+
+/**
+ * The backend's sentence reading (app/scoring.py: sentence_spans, score_text):
+ * spans of the text's sentences, each scored on the same axis as the text, and
+ * nothing at all for a single-sentence text. Offsets are UTF-16 code units here
+ * for the same reason they are there — the client slices a JS string with them.
+ */
+function sentences(text: string): { start: number; end: number; score: number }[] {
+  const spans: [number, number][] = [];
+  const sep = /(?<=[.!?])[\)"']*\s+/g;
+  let pos = 0;
+  for (const match of [...text.matchAll(sep), null]) {
+    const end = match ? match.index : text.length;
+    const segment = text.slice(pos, end);
+    const start = pos + (segment.length - segment.trimStart().length);
+    const stop = end - (segment.length - segment.trimEnd().length);
+    pos = match ? match.index + match[0].length : end;
+    if (stop <= start) continue;
+    const last = spans[spans.length - 1];
+    if (last && (stop - start < MIN_SENT_CHARS || last[1] - last[0] < MIN_SENT_CHARS)) {
+      last[1] = stop;
+    } else {
+      spans.push([start, stop]);
+    }
+  }
+  if (spans.length < 2) return [];
+  return spans.map(([start, end]) => ({ start, end, score: score(text.slice(start, end)) }));
+}
+
 export async function handle(method: string, path: string, body: unknown): Promise<unknown> {
   await delay(250);
   const key = `${method} ${path}`;
@@ -162,16 +193,24 @@ export async function handle(method: string, path: string, body: unknown): Promi
     requireCalibrated();
     await delay(1500); // emulate the embedding call
     const { first, second } = body as { first: string; second: string };
-    if (first.trim() === second.trim()) return { first: 0, second: 0, gap: 0 };
+    if (first.trim() === second.trim()) {
+      const blank = { score: 0, sentences: [] };
+      return { first: blank, second: blank, gap: 0 };
+    }
     const a = score(first);
     const b = score(second);
-    return { first: a, second: b, gap: b - a };
+    return {
+      first: { score: a, sentences: sentences(first) },
+      second: { score: b, sentences: sentences(second) },
+      gap: b - a,
+    };
   }
 
   if (key === "POST /api/score") {
     requireCalibrated();
     await delay(1500); // emulate the embedding call
-    return { score: score((body as { text: string }).text) };
+    const { text } = body as { text: string };
+    return { score: score(text), sentences: sentences(text) };
   }
 
   const putMatch = path.match(/^\/api\/examples\/(\d+)$/);

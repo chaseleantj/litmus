@@ -14,7 +14,16 @@
   } from "./compareState.svelte";
   import ErrorPanel from "./ErrorPanel.svelte";
   import { isCalibrated, library, MIN_PAIRS } from "./library.svelte";
-  import { fmtScore, pickDomain, scalePos, tickLabel, ticksFor } from "./scale";
+  import {
+    CLEAR,
+    fmtScore,
+    pickDomain,
+    scalePos,
+    tickLabel,
+    ticksFor,
+    TOO_CLOSE,
+  } from "./scale";
+  import ScoredTextarea, { isTinted } from "./ScoredTextarea.svelte";
 
   interface Props {
     onOpenLibrary: () => void;
@@ -23,10 +32,6 @@
   }
 
   let { onOpenLibrary, suspended }: Props = $props();
-
-  // Interpretation thresholds (shared with the strip and the verdict copy).
-  const TOO_CLOSE = 0.02;
-  const CLEAR = 0.1;
 
   const pair = $derived(cs.mode === "pair");
   // Derived from what was scored, not from what is currently typed: everything
@@ -99,8 +104,18 @@
       markers = identical
         ? [{ score: 0, label: null, tier: "low", showValue: false }]
         : [
-            { score: cs.result.first, label: "First", tier: "high", showValue: true },
-            { score: cs.result.second, label: "Second", tier: "low", showValue: true },
+            {
+              score: cs.result.first.score,
+              label: "First",
+              tier: "high",
+              showValue: true,
+            },
+            {
+              score: cs.result.second.score,
+              label: "Second",
+              tier: "low",
+              showValue: true,
+            },
           ];
     } else {
       if (!cs.single) return null;
@@ -159,6 +174,28 @@
     };
   });
 
+  /** What each box paints: the sentence reading for the text that box holds,
+   *  paired with the text it was measured on (ScoredTextarea drops the tint as
+   *  soon as the two diverge). In single mode only the first box is on screen. */
+  const reading = $derived.by(() => {
+    if (pair) {
+      return {
+        first: { sentences: cs.result?.first.sentences ?? [], text: cs.lastScored?.a ?? null },
+        second: { sentences: cs.result?.second.sentences ?? [], text: cs.lastScored?.b ?? null },
+      };
+    }
+    return {
+      first: { sentences: cs.single?.sentences ?? [], text: cs.lastScoredSingle },
+      second: { sentences: [], text: null },
+    };
+  });
+
+  // The note earns its line only while a wash is actually on screen.
+  const tinted = $derived(
+    isTinted(reading.first.sentences, reading.first.text, cs.first) ||
+      (pair && isTinted(reading.second.sentences, reading.second.text, cs.second)),
+  );
+
   // Set in paste (value still pre-insert), consumed in the following input
   // once bind:value has caught up — microtasks alone race the bind.
   let pasteIntoEmpty = false;
@@ -211,17 +248,6 @@
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  /** Whitespace-separated tokens; empty and blank strings are 0. */
-  function wordCount(text: string): number {
-    const trimmed = text.trim();
-    return trimmed ? trimmed.split(/\s+/).length : 0;
-  }
-
-  function wordLabel(text: string): string {
-    const n = wordCount(text);
-    return n === 1 ? "1 word" : `${n} words`;
-  }
-
   function tryExample() {
     if (library.examples.length < MIN_PAIRS) {
       onOpenLibrary();
@@ -241,38 +267,37 @@
 
 <section aria-label="Detect AI writing">
   <div class="inputs" class:pair>
-    <div class="field">
-      <div class="field-head">
-        {#if pair}
-          <label class="micro-label" for="det-t1">First text</label>
-        {/if}
-        <span class="micro-label">{wordLabel(cs.first)}</span>
-      </div>
-      <textarea
-        id="det-t1"
-        aria-label={pair ? undefined : "Text to score"}
-        bind:value={cs.first}
+    <ScoredTextarea
+      id="det-t1"
+      label={pair ? "First text" : undefined}
+      ariaLabel="Text to score"
+      bind:value={cs.first}
+      placeholder="Paste something here."
+      sentences={reading.first.sentences}
+      scoredText={reading.first.text}
+      oninput={onInput}
+      onpaste={onPaste}
+    />
+    {#if pair}
+      <ScoredTextarea
+        id="det-t2"
+        label="Second text"
+        bind:value={cs.second}
+        placeholder="And something else here."
+        sentences={reading.second.sentences}
+        scoredText={reading.second.text}
         oninput={onInput}
         onpaste={onPaste}
-        placeholder="Paste something here."
-      ></textarea>
-    </div>
-    {#if pair}
-      <div class="field">
-        <div class="field-head">
-          <label class="micro-label" for="det-t2">Second text</label>
-          <span class="micro-label">{wordLabel(cs.second)}</span>
-        </div>
-        <textarea
-          id="det-t2"
-          bind:value={cs.second}
-          oninput={onInput}
-          onpaste={onPaste}
-          placeholder="And something else here."
-        ></textarea>
-      </div>
+      />
     {/if}
   </div>
+
+  {#if tinted}
+    <p class="hint reading">
+      Each sentence is blue if it sounds like AI, red if it sounds like you. The score
+      below is how the overall text sounds.
+    </p>
+  {/if}
 
   <div class="field-actions">
     <div class="actions-left">
@@ -318,7 +343,7 @@
   </div>
 
   {#if cs.stale && !cs.scoring && calibrated}
-    <p class="rescore-hint" aria-live="polite">
+    <p class="hint rescore" aria-live="polite">
       Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score
     </p>
   {/if}
@@ -451,26 +476,6 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .field-head {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-  }
-
-  .field-head .micro-label:last-child {
-    margin-left: auto;
-  }
-
-  .field textarea {
-    min-height: 200px;
-  }
-
   .field-actions {
     display: flex;
     align-items: center;
@@ -490,11 +495,22 @@
 
   /* .seg (segmented control) styles are shared — see app.css. */
 
-  .rescore-hint {
+  /* The lines that sit under the boxes — what to press, and how to read the
+     shading. One treatment, so they never read as two different kinds of note. */
+  .hint {
     margin: 16px 0 0;
-    text-align: center;
     font-size: var(--text-body);
     color: var(--ink-faint);
+  }
+
+  /* The prompt belongs to no box in particular; the shading note describes the
+     boxes above it, so it starts where they start. */
+  .hint.rescore {
+    text-align: center;
+  }
+
+  .hint.reading {
+    margin-top: 12px;
   }
 
   .result {
