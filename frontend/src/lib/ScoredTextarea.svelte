@@ -72,16 +72,31 @@
   });
 
   let box = $state<HTMLTextAreaElement>();
-  let mirror = $state<HTMLElement>();
 
-  function syncScroll() {
-    if (box && mirror) mirror.scrollTop = box.scrollTop;
+  /** The textarea never scrolls itself: it grows to hold everything, and the
+   *  .box around it scrolls both it and the wash in one layer — which is what
+   *  keeps the wash glued to the glyphs. scrollHeight excludes the border, so
+   *  the border's share of the border-box height is added back. */
+  function grow() {
+    const el = box;
+    if (!el) return;
+    el.style.height = "0";
+    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
   }
 
-  // A long text is often scrolled by the time its score comes back, so the
-  // mirror has to catch up the moment it appears — not only on the next scroll.
   $effect(() => {
-    if (parts) syncScroll();
+    value;
+    grow();
+  });
+
+  // A width change (mode toggle, window resize, dragging the box's handle)
+  // rewraps the lines, which changes the height the text needs.
+  $effect(() => {
+    const el = box;
+    if (!el) return;
+    const observer = new ResizeObserver(grow);
+    observer.observe(el);
+    return () => observer.disconnect();
   });
 </script>
 
@@ -93,7 +108,6 @@
   <div class="box">
     {#if parts}<div
         class="text-mirror tint"
-        bind:this={mirror}
         aria-hidden="true"
       >{#each parts as part, i (i)}<span style:background={part.tint}>{part.text}</span>{/each}</div>{/if}
     <textarea
@@ -104,7 +118,6 @@
       bind:value
       {oninput}
       {onpaste}
-      onscroll={syncScroll}
     ></textarea>
   </div>
 </div>
@@ -126,35 +139,61 @@
     margin-left: auto;
   }
 
-  /* The box owns the paper the words sit on, because a textarea paints its own
-     background over anything behind it — and the wash belongs behind the text,
-     where it never costs a glyph any contrast. */
+  /* The box owns the paper, the border, and — crucially — the scrolling. The
+     textarea grows to hold its whole text and never scrolls itself, so the
+     wash behind it lives in the same scroll layer and can never trail the
+     glyphs. (A separately-scrolled mirror synced from scroll events lags: the
+     textarea scrolls on the compositor thread, the sync runs on the main one.) */
   .box {
     position: relative;
+    height: 200px;
+    overflow-y: auto;
+    resize: vertical;
     background: var(--surface);
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm);
+    transition:
+      border-color var(--speed) var(--ease),
+      box-shadow var(--speed) var(--ease);
+  }
+
+  .box:focus-within {
+    border-color: var(--ink-2);
+    box-shadow: 0 0 0 3px hsl(var(--ink-hsl) / 0.08);
   }
 
   .box textarea {
-    min-height: 200px;
+    /* Fill the box when the text is short; grow() takes over past that. */
+    min-height: 100%;
+    overflow: hidden;
+    resize: none;
+    /* The visible border, focus ring and resize handle are the box's now; the
+       transparent border stays because the wash's metrics include one too. */
+    border-color: transparent;
     background: transparent;
     /* Above the wash: the caret, the selection and every pointer event stay
        the textarea's own. */
     position: relative;
     /* A textarea is inline by default, and the few pixels of baseline gap under
-       it would leave .box — and the wash inset into it — ending below the box
+       it would leave .box — and the wash behind it — ending below the box
        the user sees. */
     display: block;
   }
 
+  .box textarea:focus {
+    border-color: transparent;
+    box-shadow: none;
+  }
+
   /* The sentence wash. Metrics come from the shared textarea block in app.css,
-     so this stays glyph-aligned with the box it covers; everything here is
-     about being seen and not touched. */
+     so this stays glyph-aligned with the text it sits behind; its height is its
+     own content's, and it rides along when the box scrolls. */
   .tint {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
     z-index: 0;
-    overflow: hidden;
     color: transparent;
     white-space: pre-wrap;
     overflow-wrap: break-word;

@@ -292,13 +292,6 @@
     {/if}
   </div>
 
-  {#if tinted}
-    <p class="hint reading">
-      Each sentence is blue if it sounds like AI, red if it sounds like you. The score
-      below is how the overall text sounds.
-    </p>
-  {/if}
-
   <div class="field-actions">
     <div class="actions-left">
       <div class="seg" role="group" aria-label="Number of texts">
@@ -340,10 +333,22 @@
       <Play size={14} />
       Try an example
     </button>
+    {#if tinted}
+      <span class="help">
+        <button class="help-badge" type="button" aria-describedby="reading-tip">
+          <span aria-hidden="true">?</span>
+          <span class="sr-only">How to read the shading</span>
+        </button>
+        <span class="help-tip" id="reading-tip" role="tooltip">
+          Each sentence is blue if it sounds like AI, red if it sounds like you. The score
+          below is how the overall text sounds.
+        </span>
+      </span>
+    {/if}
   </div>
 
   {#if cs.stale && !cs.scoring && calibrated}
-    <p class="hint rescore" aria-live="polite">
+    <p class="hint" aria-live="polite">
       Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to score
     </p>
   {/if}
@@ -495,22 +500,71 @@
 
   /* .seg (segmented control) styles are shared — see app.css. */
 
-  /* The lines that sit under the boxes — what to press, and how to read the
-     shading. One treatment, so they never read as two different kinds of note. */
+  /* The line under the boxes saying what to press. */
   .hint {
     margin: 16px 0 0;
     font-size: var(--text-body);
     color: var(--ink-faint);
-  }
-
-  /* The prompt belongs to no box in particular; the shading note describes the
-     boxes above it, so it starts where they start. */
-  .hint.rescore {
     text-align: center;
   }
 
-  .hint.reading {
-    margin-top: 12px;
+  /* How to read the shading, folded away behind a small badge so the row of
+     controls stays quiet. It comes and goes with the wash it explains. */
+  .help {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .help-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--ink-secondary);
+    font-size: var(--text-micro);
+    font-weight: 600;
+    transition:
+      color var(--speed) var(--ease),
+      border-color var(--speed) var(--ease);
+  }
+
+  .help-badge:hover,
+  .help-badge:focus-visible {
+    color: var(--ink-2);
+    border-color: var(--ink-2);
+  }
+
+  /* Same surface as the map's tooltip — one look for everything that floats. */
+  .help-tip {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    right: -4px; /* hangs left from the badge, so it can't clip the viewport */
+    width: 264px;
+    padding: 9px 11px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-toast);
+    font-size: var(--text-body);
+    line-height: 1.5;
+    color: var(--ink);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity var(--speed) var(--ease),
+      visibility var(--speed) var(--ease);
+    z-index: 2;
+  }
+
+  .help-badge:hover + .help-tip,
+  .help-badge:focus-visible + .help-tip {
+    opacity: 1;
+    visibility: visible;
   }
 
   .result {
