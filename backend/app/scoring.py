@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 import os
+import re
 
 import requests
 
@@ -239,13 +240,108 @@ def same_text(first: str, second: str) -> bool:
     return first.strip() == second.strip()
 
 
-def score_one(text: str, direction: dict, api_key: str) -> dict:
-    (v,) = embed([text], api_key)
-    return {"score": project_score(v, direction)}
+# --- Sentence-level reading -------------------------------------------------
+# A text's score is, and stays, the projection of its single whole-text
+# embedding: backend/experiments/sentence_scoring.py shows that aggregating
+# per-sentence scores never beats it (LOO AUC 0.926 whole-text vs 0.918 for the
+# best of 19 aggregation rules, and 0.871 for a plain mean). Sentence scores are
+# carried alongside it purely so the UI can show where a text leans — see
+# docs/sentence-scoring.md, which also records how weakly a single sentence
+# predicts its own text (r = 0.60).
+
+# Fragments shorter than this embed unstably, so they join their neighbour.
+MIN_SENT_CHARS = 15
+
+# Sentence punctuation, with any closing quotes or brackets counted as part of
+# the separator rather than the next sentence.
+_SENT_SEP = re.compile(r"(?<=[.!?])[\)\"']*\s+")
+
+
+def sentence_spans(text: str) -> list[tuple[int, int]]:
+    """Character spans of the text's sentences, as offsets into `text`. The one
+    owner of the splitting rule — backend/experiments reads it from here, so the
+    app and the research numbers describe the same units.
+
+    A text with no split point is a single span, and spans exclude the
+    whitespace between sentences so a span's text is exactly what gets
+    embedded."""
+    spans: list[tuple[int, int]] = []
+    pos = 0
+    for match in [*_SENT_SEP.finditer(text), None]:
+        end = match.start() if match is not None else len(text)
+        segment = text[pos:end]
+        start = pos + (len(segment) - len(segment.lstrip()))
+        stop = end - (len(segment) - len(segment.rstrip()))
+        pos = match.end() if match is not None else end
+        if stop <= start:
+            continue
+        if spans and (
+            stop - start < MIN_SENT_CHARS
+            or spans[-1][1] - spans[-1][0] < MIN_SENT_CHARS
+        ):
+            spans[-1] = (spans[-1][0], stop)
+        else:
+            spans.append((start, stop))
+    if not spans:
+        # Blank texts are rejected at the API boundary; guard anyway.
+        stripped = text.strip()
+        first = text.find(stripped)
+        return [(first, first + len(stripped))]
+    return spans
+
+
+def _utf16_offsets(text: str, spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """The same spans measured in UTF-16 code units, which is how JavaScript
+    indexes a string. Converted here, at the boundary, so one emoji in a pasted
+    text cannot shift every highlight after it."""
+
+    def units(upto: int) -> int:
+        return len(text[:upto].encode("utf-16-le")) // 2
+
+    return [(units(a), units(b)) for a, b in spans]
+
+
+def _embed_inputs(text: str, spans: list[tuple[int, int]]) -> list[str]:
+    """What one text costs to read: the whole text, then its sentences — unless
+    it is a single sentence, where tinting the whole text with its own score
+    would say nothing the score does not already say, so there is nothing to
+    embed and nothing to show."""
+    return [text] + ([text[a:b] for a, b in spans] if len(spans) > 1 else [])
+
+
+def _scored(
+    text: str, spans: list[tuple[int, int]], vectors: list[list[float]], direction: dict
+) -> dict:
+    """One text's reading, from the vectors _embed_inputs asked for: the score
+    is the whole-text projection, and the sentences are carried beside it."""
+    return {
+        "score": project_score(vectors[0], direction),
+        "sentences": [
+            {"start": a, "end": b, "score": project_score(v, direction)}
+            for (a, b), v in zip(_utf16_offsets(text, spans), vectors[1:])
+        ],
+    }
+
+
+def score_text(text: str, direction: dict, api_key: str) -> dict:
+    """A text's score, plus each of its sentences' scores on the same axis. Both
+    come from one embeddings request, so the sentence reading costs a second
+    pass over the text's tokens and no extra round trip."""
+    spans = sentence_spans(text)
+    return _scored(text, spans, embed(_embed_inputs(text, spans), api_key), direction)
 
 
 def compare(first: str, second: str, direction: dict, api_key: str) -> dict:
-    u, v = embed([first, second], api_key)
-    score1 = project_score(u, direction)
-    score2 = project_score(v, direction)
-    return {"first": score1, "second": score2, "gap": score2 - score1}
+    """Both texts read as score_text reads one, in a single request."""
+    spans = [sentence_spans(first), sentence_spans(second)]
+    inputs = [_embed_inputs(first, spans[0]), _embed_inputs(second, spans[1])]
+    vectors = embed(inputs[0] + inputs[1], api_key)
+    scored = [
+        _scored(first, spans[0], vectors[: len(inputs[0])], direction),
+        _scored(second, spans[1], vectors[len(inputs[0]) :], direction),
+    ]
+    return {
+        "first": scored[0],
+        "second": scored[1],
+        "gap": scored[1]["score"] - scored[0]["score"],
+    }

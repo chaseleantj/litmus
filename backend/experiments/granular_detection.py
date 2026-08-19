@@ -46,7 +46,6 @@ from __future__ import annotations
 
 import json
 import math
-import re
 
 from embedding_dims import (
     CACHE_PATH,
@@ -65,23 +64,14 @@ MODEL = scoring.MODEL
 KNN_K = 5
 SOFTMAX_TEMP = 0.05
 WINDOW = 3
-MIN_SENT_CHARS = 15
-
-
 # ---------------------------------------------------------------- text units
 
 def split_sentences(text: str) -> list[str]:
-    """Regex sentence split; fragments shorter than MIN_SENT_CHARS are merged
-    into the previous sentence (tiny fragments embed unstably)."""
-    parts = [p.strip() for p in re.split(r"(?<=[.!?])[\)\"']*\s+", text.strip())]
-    parts = [p for p in parts if p]
-    merged: list[str] = []
-    for p in parts:
-        if merged and (len(p) < MIN_SENT_CHARS or len(merged[-1]) < MIN_SENT_CHARS):
-            merged[-1] = merged[-1] + " " + p
-        else:
-            merged.append(p)
-    return merged or [text.strip()]
+    """The app's splitting rule (app.scoring.sentence_spans), so these numbers
+    describe the units the product actually scores. Fragments shorter than
+    scoring.MIN_SENT_CHARS join their neighbour: tiny fragments embed
+    unstably."""
+    return [text[a:b] for a, b in scoring.sentence_spans(text)]
 
 
 def windows_of(sents: list[str], size: int = WINDOW) -> list[str]:

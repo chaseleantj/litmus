@@ -6,7 +6,7 @@ import type {
   ImportResult,
   MapResult,
   PairInput,
-  ScoreResult,
+  TextScore,
 } from "./types";
 
 export { ApiError };
@@ -101,6 +101,6 @@ export const api = {
     request<ImportResult>("POST", "/api/examples/import", pairs),
   compare: (first: string, second: string) =>
     request<CompareResult>("POST", "/api/compare", { first, second }),
-  score: (text: string) => request<ScoreResult>("POST", "/api/score", { text }),
+  score: (text: string) => request<TextScore>("POST", "/api/score", { text }),
   map: () => request<MapResult>("GET", "/api/map"),
 };

@@ -25,9 +25,12 @@
   /* The wash under a hovered ghost control */
   --tint: hsl(var(--border-hsl) / 0.55);
 
-  /* The two poles of the litmus scale */
-  --ai: hsl(248 45% 50%);
-  --human: hsl(19 72% 42%);
+  /* The two poles of the litmus scale. Like ink and border, they carry their
+     raw components too: the sentence tint is the same hue at low alpha. */
+  --ai-hsl: 248 45% 50%;
+  --human-hsl: 19 72% 42%;
+  --ai: hsl(var(--ai-hsl));
+  --human: hsl(var(--human-hsl));
 
   --danger: hsl(2 64% 45%);
   --danger-soft: hsl(6 60% 96%);
@@ -267,14 +270,22 @@ button:focus-visible {
 }
 
 /* ---------- Inputs ---------- */
-textarea {
-  width: 100%;
+/* One owner for the text-box metrics: the sentence tint (.text-mirror in
+   ScoredTextarea) lays glyph-for-glyph over a textarea, so every property that
+   moves a line break or a baseline has to be declared for both at once. */
+textarea,
+.text-mirror {
   font-size: var(--text-content);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
   padding: 12px 14px;
   line-height: 1.6;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+textarea {
+  width: 100%;
+  border-color: var(--border-strong);
+  background: var(--surface);
   resize: vertical;
   transition:
     border-color var(--speed) var(--ease),

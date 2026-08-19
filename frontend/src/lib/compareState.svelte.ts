@@ -2,7 +2,7 @@ import { api } from "./api";
 import { toErrorState, type ErrorState } from "./errors";
 import { addPair, isCalibrated } from "./library.svelte";
 import { toast } from "./toast";
-import type { CompareResult, ScoreResult } from "./types";
+import type { CompareResult, TextScore } from "./types";
 
 /**
  * Single owner of the Detect surface, mirroring mapState: the drafts, the
@@ -24,7 +24,7 @@ export const compareState = $state({
   second: "",
   result: null as CompareResult | null,
   lastScored: null as { a: string; b: string } | null,
-  single: null as ScoreResult | null,
+  single: null as TextScore | null,
   lastScoredSingle: null as string | null,
   scoring: false,
   /** The showing result no longer describes what is typed. */

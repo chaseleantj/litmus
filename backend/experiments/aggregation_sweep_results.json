@@ -30,231 +30,231 @@
       "method": "bertscore-soft",
       "aggregation": "top-1",
       "auc": 0.8,
-      "d_prime": 1.1346159017857473,
+      "d_prime": 1.1368444413139431,
       "paired_accuracy": 0.7
     },
     {
       "method": "bertscore-soft",
       "aggregation": "top-2",
       "auc": 0.8,
-      "d_prime": 1.1187130302132289,
+      "d_prime": 1.1219440356493275,
       "paired_accuracy": 0.9
     },
     {
       "method": "bertscore-soft",
       "aggregation": "top-3",
       "auc": 0.84,
-      "d_prime": 1.1721751614183382,
+      "d_prime": 1.176453959070217,
       "paired_accuracy": 1.0
     },
     {
       "method": "bertscore-soft",
       "aggregation": "top-4",
       "auc": 0.85,
-      "d_prime": 1.1696651702885952,
+      "d_prime": 1.175519870085439,
       "paired_accuracy": 1.0
     },
     {
       "method": "bertscore-soft",
       "aggregation": "top-5",
       "auc": 0.84,
-      "d_prime": 1.1748301306676008,
+      "d_prime": 1.1811566663938546,
       "paired_accuracy": 1.0
     },
     {
       "method": "bertscore-soft",
       "aggregation": "top-7",
       "auc": 0.82,
-      "d_prime": 1.1376711148176728,
+      "d_prime": 1.143744916658535,
       "paired_accuracy": 1.0
     },
     {
       "method": "bertscore-soft",
       "aggregation": "top-10",
       "auc": 0.82,
-      "d_prime": 1.1102836901982787,
+      "d_prime": 1.116322950207903,
       "paired_accuracy": 1.0
     },
     {
       "method": "bertscore-soft",
       "aggregation": "mean (k=all)",
       "auc": 0.8,
-      "d_prime": 1.0986371923188396,
+      "d_prime": 1.104673898276977,
       "paired_accuracy": 1.0
     },
     {
       "method": "bertscore-soft",
       "aggregation": "top-25%",
       "auc": 0.85,
-      "d_prime": 1.1812718247651088,
+      "d_prime": 1.1839483302272824,
       "paired_accuracy": 0.9
     },
     {
       "method": "bertscore-soft",
       "aggregation": "top-50%",
       "auc": 0.79,
-      "d_prime": 1.1811387488482905,
+      "d_prime": 1.1850105311270998,
       "paired_accuracy": 1.0
     },
     {
       "method": "bertscore-soft",
       "aggregation": "|s|-weighted",
       "auc": 0.79,
-      "d_prime": 1.0568628221576641,
+      "d_prime": 1.060127481693707,
       "paired_accuracy": 0.8
     },
     {
       "method": "bertscore-soft",
       "aggregation": "softmax T=0.02",
       "auc": 0.81,
-      "d_prime": 1.0569274040621546,
+      "d_prime": 1.0592654489437596,
       "paired_accuracy": 0.7
     },
     {
       "method": "bertscore-soft",
       "aggregation": "softmax T=0.05",
       "auc": 0.8,
-      "d_prime": 1.0399563218207448,
+      "d_prime": 1.0427788065573755,
       "paired_accuracy": 0.8
     },
     {
       "method": "bertscore-soft",
       "aggregation": "softmax T=0.1",
       "auc": 0.8,
-      "d_prime": 1.0767145911406981,
+      "d_prime": 1.0804357266323372,
       "paired_accuracy": 1.0
     },
     {
       "method": "bertscore-soft",
       "aggregation": "rank-linear",
       "auc": 0.81,
-      "d_prime": 1.1418087654424602,
+      "d_prime": 1.1464000216155301,
       "paired_accuracy": 1.0
     },
     {
       "method": "bertscore-soft",
       "aggregation": "trimmed",
       "auc": 0.81,
-      "d_prime": 1.1741468475906278,
+      "d_prime": 1.1807676351385052,
       "paired_accuracy": 1.0
     },
     {
       "method": "bertscore-soft",
       "aggregation": "median",
       "auc": 0.77,
-      "d_prime": 1.0293025972706364,
+      "d_prime": 1.0360456147694572,
       "paired_accuracy": 1.0
     },
     {
       "method": "sent-proj",
       "aggregation": "top-1",
       "auc": 0.725,
-      "d_prime": 0.829277103590024,
+      "d_prime": 0.8302897202301399,
       "paired_accuracy": 0.8
     },
     {
       "method": "sent-proj",
       "aggregation": "top-2",
       "auc": 0.71,
-      "d_prime": 0.8922685301876756,
+      "d_prime": 0.8927911180770043,
       "paired_accuracy": 0.8
     },
     {
       "method": "sent-proj",
       "aggregation": "top-3",
       "auc": 0.77,
-      "d_prime": 1.044998507015011,
+      "d_prime": 1.0452201027318133,
       "paired_accuracy": 1.0
     },
     {
       "method": "sent-proj",
       "aggregation": "top-4",
       "auc": 0.79,
-      "d_prime": 1.1722757066219731,
+      "d_prime": 1.1723462776257718,
       "paired_accuracy": 1.0
     },
     {
       "method": "sent-proj",
       "aggregation": "top-5",
       "auc": 0.79,
-      "d_prime": 1.1884225453487762,
+      "d_prime": 1.1884205042715583,
       "paired_accuracy": 1.0
     },
     {
       "method": "sent-proj",
       "aggregation": "top-7",
       "auc": 0.79,
-      "d_prime": 1.1636199928372504,
+      "d_prime": 1.1636070838105723,
       "paired_accuracy": 1.0
     },
     {
       "method": "sent-proj",
       "aggregation": "top-10",
       "auc": 0.81,
-      "d_prime": 1.2362003776391526,
+      "d_prime": 1.2360662605738053,
       "paired_accuracy": 1.0
     },
     {
       "method": "sent-proj",
       "aggregation": "mean (k=all)",
       "auc": 0.81,
-      "d_prime": 1.2235854698116475,
+      "d_prime": 1.223440356996087,
       "paired_accuracy": 1.0
     },
     {
       "method": "sent-proj",
       "aggregation": "top-25%",
       "auc": 0.765,
-      "d_prime": 0.9812576517508854,
+      "d_prime": 0.9821025945608892,
       "paired_accuracy": 0.8
     },
     {
       "method": "sent-proj",
       "aggregation": "top-50%",
       "auc": 0.78,
-      "d_prime": 1.1720668037978001,
+      "d_prime": 1.1722741390633042,
       "paired_accuracy": 1.0
     },
     {
       "method": "sent-proj",
       "aggregation": "|s|-weighted",
       "auc": 0.8,
-      "d_prime": 1.164523169940192,
+      "d_prime": 1.1647942966488236,
       "paired_accuracy": 0.9
     },
     {
       "method": "sent-proj",
       "aggregation": "softmax T=0.02",
       "auc": 0.74,
-      "d_prime": 0.9262127734212205,
+      "d_prime": 0.9273305500502598,
       "paired_accuracy": 0.8
     },
     {
       "method": "sent-proj",
       "aggregation": "softmax T=0.05",
       "auc": 0.77,
-      "d_prime": 1.1292181974025879,
+      "d_prime": 1.1298488357746064,
       "paired_accuracy": 0.9
     },
     {
       "method": "sent-proj",
       "aggregation": "softmax T=0.1",
       "auc": 0.82,
-      "d_prime": 1.2118045399653545,
+      "d_prime": 1.211980106443692,
       "paired_accuracy": 0.9
     },
     {
       "method": "sent-proj",
       "aggregation": "rank-linear",
       "auc": 0.82,
-      "d_prime": 1.1623553653807097,
+      "d_prime": 1.1624158259498776,
       "paired_accuracy": 1.0
     },
     {
       "method": "sent-proj",
       "aggregation": "trimmed",
       "auc": 0.83,
-      "d_prime": 1.2671880521204941,
+      "d_prime": 1.2669830437884504,
       "paired_accuracy": 1.0
     },
     {
