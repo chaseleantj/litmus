@@ -4,10 +4,12 @@ import json
 import threading
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime, timezone
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, field_validator, model_validator
 from sqlalchemy.orm import Session
 
 from . import scoring
@@ -74,20 +76,23 @@ def valid_text(v: str) -> str:
     return v
 
 
-class ExampleIn(BaseModel):
-    ai: str
-    human: str
+# The type every request field that holds a scorable text is declared as, so
+# the rule is attached to the type rather than restated as a validator on each
+# model that happens to accept one.
+ScorableText = Annotated[str, AfterValidator(valid_text)]
 
-    @field_validator("ai", "human")
-    @classmethod
-    def non_empty(cls, v: str) -> str:
-        return valid_text(v)
+
+class ExampleIn(BaseModel):
+    ai: ScorableText
+    human: ScorableText
 
     @model_validator(mode="after")
     def versions_differ(self):
         # Two identical versions contribute a zero step, and a library of only
-        # those leaves no direction to learn (scoring.learn_direction).
-        if self.ai.strip() == self.human.strip():
+        # those leaves no direction to learn (scoring.learn_direction). Same
+        # rule the compare endpoint short-circuits on: scoring.same_text owns
+        # what "the same text" means.
+        if scoring.same_text(self.ai, self.human):
             raise ValueError("the AI version and your version must differ")
         return self
 
@@ -110,13 +115,8 @@ class ExampleOut(BaseModel):
 
 
 class CompareIn(BaseModel):
-    first: str
-    second: str
-
-    @field_validator("first", "second")
-    @classmethod
-    def non_empty(cls, v: str) -> str:
-        return valid_text(v)
+    first: ScorableText
+    second: ScorableText
 
 
 class SentenceOut(BaseModel):
@@ -145,12 +145,7 @@ class CompareOut(BaseModel):
 
 
 class ScoreIn(BaseModel):
-    text: str
-
-    @field_validator("text")
-    @classmethod
-    def non_empty(cls, v: str) -> str:
-        return valid_text(v)
+    text: ScorableText
 
 
 # Enough of a text for a map tooltip; the full versions live in the library.
@@ -365,9 +360,5 @@ if FRONTEND_DIST.is_dir():
     @app.exception_handler(404)
     async def spa_fallback(request, exc):
         if request.url.path.startswith("/api/"):
-            from fastapi.responses import JSONResponse
-
             return JSONResponse({"detail": exc.detail}, status_code=404)
-        from fastapi.responses import FileResponse
-
         return FileResponse(FRONTEND_DIST / "index.html")

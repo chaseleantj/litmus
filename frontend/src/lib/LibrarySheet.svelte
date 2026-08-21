@@ -14,6 +14,7 @@
   } from "./library.svelte";
   import LibraryHistogram from "./LibraryHistogram.svelte";
   import PairEditor from "./PairEditor.svelte";
+  import { plural } from "./plural";
   import { toast } from "./toast";
   import type { Example, PairInput } from "./types";
 
@@ -226,12 +227,12 @@
       const imported = await importPairs(valid);
       const duplicates = valid.length - imported;
       const skipped = [
-        duplicates > 0 ? `${duplicates} duplicate${duplicates === 1 ? "" : "s"}` : null,
-        invalid > 0 ? `${invalid} invalid entr${invalid === 1 ? "y" : "ies"}` : null,
+        duplicates > 0 ? plural(duplicates, "duplicate") : null,
+        invalid > 0 ? plural(invalid, "invalid entry", "invalid entries") : null,
       ].filter(Boolean);
       toast(
         "success",
-        `Imported ${imported} of ${parsed.length} pair${parsed.length === 1 ? "" : "s"}` +
+        `Imported ${imported} of ${plural(parsed.length, "pair")}` +
           (skipped.length > 0 ? ` (${skipped.join(", ")} skipped).` : "."),
       );
     } catch (err) {

@@ -11,6 +11,7 @@
     buildHistogram,
     histogramCaption,
     RANGES,
+    specFor,
     undatedNote,
     type RangeId,
   } from "./histogram";
@@ -50,7 +51,7 @@
   });
 
   const emptyNote = $derived.by(() => {
-    const phrase = RANGES.find((r) => r.id === range)?.phrase ?? "";
+    const phrase = specFor(range).phrase;
     if (hist.latest === null) return "No pairs carry a usable date, so there is nothing to chart.";
     const day = hist.latest.toLocaleDateString(undefined, { day: "numeric", month: "short" });
     return `Nothing added in ${phrase}. The most recent pair was added on ${day}.`;
@@ -126,7 +127,7 @@
           >
             {#if active === i}
               <span
-                class="tip"
+                class="float-panel tip"
                 role="tooltip"
                 style="bottom: calc({(b.count === 0 ? 100 : (b.count / hist.yMax) * 100)}% + 6px)"
               >{bucketCount(b)}</span>
@@ -244,23 +245,19 @@
     color: var(--faint);
   }
 
+  /* The surface is the shared .float-panel (app.css); a one-line count wants
+     the tighter inset and the small radius of an inline piece. */
   .tip {
-    position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 2;
     width: max-content;
     max-width: 180px;
     padding: 5px 8px;
-    border: 1px solid var(--hairline);
     border-radius: var(--radius-xs);
-    background: var(--surface);
-    box-shadow: var(--shadow-float);
     color: var(--ink);
     font-size: var(--text-micro);
     font-variant-numeric: tabular-nums;
     line-height: 1.3;
-    pointer-events: none;
     white-space: nowrap;
   }
 

@@ -33,7 +33,7 @@
   <h3>{heading}</h3>
   <!-- The library's column headers sit directly above this editor and label
        both columns, so the fields only name themselves once they stack. -->
-  <div class="fields pair-cols">
+  <div class="pair-cols">
     <div class="field">
       <span class="micro-label ai stacked-only">AI version</span>
       <textarea

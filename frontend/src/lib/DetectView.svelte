@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ArrowsLeftRight, Check, Play } from "phosphor-svelte";
+  import CalibrationPanel from "./CalibrationPanel.svelte";
   import {
     alreadySaved,
     clearResults,
@@ -16,16 +17,9 @@
   } from "./compareState.svelte";
   import ErrorPanel from "./ErrorPanel.svelte";
   import { isCalibrated, library, MIN_PAIRS } from "./library.svelte";
-  import {
-    CLEAR,
-    fmtScore,
-    pickDomain,
-    scalePos,
-    tickLabel,
-    ticksFor,
-    TOO_CLOSE,
-  } from "./scale";
+  import { CLEAR, fmtScore, pickDomain, scalePos, ticksFor, TOO_CLOSE } from "./scale";
   import ScoredTextarea, { isTinted } from "./ScoredTextarea.svelte";
+  import TickLadder from "./TickLadder.svelte";
 
   interface Props {
     onOpenLibrary: () => void;
@@ -348,7 +342,7 @@
           <span aria-hidden="true">?</span>
           <span class="sr-only">How to read the shading</span>
         </button>
-        <span class="help-tip" id="reading-tip" role="tooltip">
+        <span class="float-panel help-tip" id="reading-tip" role="tooltip">
           Each sentence is blue if it sounds like AI, red if it sounds like you. The score
           below is how the overall text sounds.
         </span>
@@ -369,17 +363,12 @@
     aria-live="polite"
   >
     {#if !calibrated}
-      <div class="panel-note">
-        <h3>Teach it your voice first</h3>
-        <p>
+      <CalibrationPanel {onOpenLibrary}>
+        {#snippet body(shortfall)}
           Litmus scores writing against your own. Add
-          {library.examples.length === 1 ? "one more pair" : "two pairs"} — an AI draft and your
-          version of the same thing — and scoring unlocks.
-        </p>
-        <button class="btn btn-primary" onclick={onOpenLibrary}>
-          {library.examples.length === 1 ? "Add one more pair" : "Open the library"}
-        </button>
-      </div>
+          {shortfall} — an AI draft and your version of the same thing — and scoring unlocks.
+        {/snippet}
+      </CalibrationPanel>
     {:else if cs.error}
       <ErrorPanel
         heading="Couldn’t score that"
@@ -406,7 +395,7 @@
       <div class="chart" class:tiered>
         <span class="micro-label pole ai" aria-hidden="true">AI</span>
         <div class="scale" bind:this={scaleEl}>
-          <div class="litmus-strip strip">
+          <div class="litmus-strip">
             {#if chart.band}
               <div
                 class="tie-band"
@@ -415,16 +404,7 @@
               ></div>
             {/if}
           </div>
-          {#each chart.ticks as t, i (i)}
-            <div
-              class="tick"
-              class:zero={t === 0}
-              style="left: {(i / (chart.ticks.length - 1)) * 100}%"
-              aria-hidden="true"
-            >
-              <span class="micro-label tick-num">{tickLabel(t)}</span>
-            </div>
-          {/each}
+          <TickLadder ticks={chart.ticks} ariaHidden />
           {#each chart.markers as m, i (i)}
             <span class="pin {m.side} {m.split}" style="left: {m.pos}%"></span>
             <span
@@ -554,27 +534,20 @@
     border-color: var(--ink);
   }
 
-  /* Same surface as the map's tooltip — one look for everything that floats. */
+  /* The surface is the shared .float-panel (app.css); this owns where the note
+     hangs, how wide it reads, and the fade it arrives with. */
   .help-tip {
-    position: absolute;
     bottom: calc(100% + 10px);
     right: -4px; /* hangs left from the badge, so it can't clip the viewport */
     width: 264px;
-    padding: 9px 11px 10px;
-    background: var(--surface);
-    border: 1px solid var(--hairline);
-    border-radius: var(--radius-ctl);
-    box-shadow: var(--shadow-float);
     font-size: var(--text-body);
     line-height: 1.5;
     color: var(--ink);
-    pointer-events: none;
     opacity: 0;
     visibility: hidden;
     transition:
       opacity var(--speed) var(--ease-out),
       visibility var(--speed) var(--ease-out);
-    z-index: 2;
   }
 
   .help-badge:hover + .help-tip,
@@ -660,7 +633,7 @@
     border-right: 1px dashed var(--hairline-strong);
   }
 
-  /* .tick / .tick-num are shared with the map's axis view — see app.css. */
+  /* The tick ladder is shared with the map's axis view — see TickLadder. */
 
   .pin {
     position: absolute;

@@ -355,6 +355,22 @@ textarea::-webkit-resizer,
   border-radius: var(--radius-card);
 }
 
+/* Everything that floats above the page — the map's point tooltip, the note
+   explaining the sentence shading, the histogram's bar readout — sits on the
+   same small surface: paper, a hairline, the float shadow, and no pointer
+   interception. Placement, size and type stay with each consumer, which is
+   also where a different corner radius or inset belongs. */
+.float-panel {
+  position: absolute;
+  z-index: 2;
+  padding: 9px 11px 10px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-ctl);
+  box-shadow: var(--shadow-float);
+  pointer-events: none;
+}
+
 /* The one small-label style: every caption, column header, axis label and
    count uses this, so pages carry exactly three text roles —
    display, body, micro. */

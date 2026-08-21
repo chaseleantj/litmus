@@ -7,6 +7,7 @@
  * arrive as UTC instants (ExampleOut.created_at) and are bucketed by the
  * user's local day, because "added on Tuesday" means their Tuesday.
  */
+import { plural } from "./plural";
 import type { Example } from "./types";
 
 export type RangeId = "7d" | "30d" | "all";
@@ -18,6 +19,10 @@ export const RANGES = [
   { id: "30d", label: "30 days", phrase: "the past 30 days", days: 30 },
   { id: "all", label: "All time", phrase: "all time", days: null },
 ] as const satisfies readonly { id: RangeId; label: string; phrase: string; days: number | null }[];
+
+/** The spec for a range id. One lookup, so the fallback is decided once and
+ *  every consumer reads the same label, phrase and window. */
+export const specFor = (range: RangeId) => RANGES.find((r) => r.id === range) ?? RANGES[0];
 
 export interface Bucket {
   /** Local midnight the bucket starts at, and the exclusive end after it. */
@@ -171,7 +176,7 @@ export function buildHistogram(examples: Example[], range: RangeId, now = new Da
   // The domain ends today, unless a timestamp sits in the future (clock skew
   // between server and browser): extend rather than drop the pair off the edge.
   const end = latest !== null && latest > today ? latest : today;
-  const spec = RANGES.find((r) => r.id === range) ?? RANGES[0];
+  const spec = specFor(range);
   let start = spec.days === null ? (earliest ?? today) : addDays(today, -(spec.days - 1));
   if (start > end) start = end;
 
@@ -195,8 +200,6 @@ export function buildHistogram(examples: Example[], range: RangeId, now = new Da
   return { buckets, unit, total, undated, max, ...scaleFor(max), latest };
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
 /** "3 pairs": the hover tooltip. */
 export const bucketCount = (b: Bucket): string => plural(b.count, "pair");
 
@@ -214,7 +217,7 @@ export const undatedNote = (h: Histogram): string =>
 
 /** The resting caption: what the chart is actually showing, in full. */
 export function histogramCaption(h: Histogram, range: RangeId): string {
-  const spec = RANGES.find((r) => r.id === range) ?? RANGES[0];
+  const spec = specFor(range);
   const body =
     range === "all"
       ? `${plural(h.total, "pair")} in all, one bar per ${h.unit}`

@@ -1,8 +1,10 @@
 <script lang="ts">
+  import CalibrationPanel from "./CalibrationPanel.svelte";
   import ErrorPanel from "./ErrorPanel.svelte";
   import { isCalibrated, library } from "./library.svelte";
   import { librarySignature, loadMap, mapState } from "./mapState.svelte";
-  import { fmtScore, pickDomain, scalePos, tickLabel, ticksFor } from "./scale";
+  import { fmtScore, pickDomain, scalePos, ticksFor } from "./scale";
+  import TickLadder from "./TickLadder.svelte";
   import type { MapPoint } from "./types";
 
   interface Props {
@@ -446,7 +448,7 @@
   function tooltipStyle(t: NonNullable<typeof tooltip>): string {
     const x = t.alignRight ? `left: ${t.x - 14}px; transform: translateX(-100%)` : `left: ${t.x + 14}px`;
     const y = t.below ? `top: ${t.y + 12}px` : `top: ${t.y - 12}px; translate: 0 -100%`;
-    return `${x}; ${y};`;
+    return `max-width: ${TOOLTIP_W}px; ${x}; ${y};`;
   }
 
   const roleLabel = (p: MapPoint) => (p.role === "ai" ? "AI version" : "Your version");
@@ -465,16 +467,12 @@
 
 <section aria-label="Map of your training library">
   {#if !calibrated}
-    <div class="panel-note">
-      <h3>Teach it your voice first</h3>
-      <p>
+    <CalibrationPanel {onOpenLibrary}>
+      {#snippet body(shortfall)}
         The map draws every text in your library — AI drafts beside your versions. Add
-        {library.examples.length === 1 ? "one more pair" : "two pairs"} and the picture appears.
-      </p>
-      <button class="btn btn-primary" onclick={onOpenLibrary}>
-        {library.examples.length === 1 ? "Add one more pair" : "Open the library"}
-      </button>
-    </div>
+        {shortfall} and the picture appears.
+      {/snippet}
+    </CalibrationPanel>
   {:else if mapState.error}
     <ErrorPanel
       heading="Couldn’t draw the map"
@@ -525,11 +523,7 @@
             <div class="zero-line"></div>
             <div class="axis-scale" style="left: {axisPadX}px; right: {axisPadX}px">
               <div class="litmus-strip"></div>
-              {#each ticks as t, i (i)}
-                <div class="tick" class:zero={t === 0} style="left: {(i / (ticks.length - 1)) * 100}%">
-                  <span class="micro-label tick-num">{tickLabel(t)}</span>
-                </div>
-              {/each}
+              <TickLadder {ticks} />
             </div>
           </div>
           <canvas
@@ -543,7 +537,7 @@
             onblur={onPointerLeave}
           ></canvas>
           {#if tooltip}
-            <div class="tooltip" style={tooltipStyle(tooltip)} role="presentation">
+            <div class="float-panel tooltip" style={tooltipStyle(tooltip)} role="presentation">
               <div class="tooltip-head">
                 <span class="micro-label dot-marker {tooltip.p.role}">{roleLabel(tooltip.p)}</span>
                 <span
@@ -696,20 +690,14 @@
     border-left: 1px dashed var(--hairline-strong);
   }
 
-  /* .tick / .tick-num are shared with the Detect strip — see app.css. */
+  /* The tick ladder is shared with the Detect strip — see TickLadder. */
 
   /* ---------- Tooltip ---------- */
+  /* The surface is the shared .float-panel (app.css). The width is TOOLTIP_W,
+     set inline: the flip-side placement is computed from the same number, so
+     the two can never drift apart. */
   .tooltip {
-    position: absolute;
     width: max-content;
-    max-width: 264px; /* = TOOLTIP_W */
-    background: var(--surface);
-    border: 1px solid var(--hairline);
-    border-radius: var(--radius-ctl);
-    box-shadow: var(--shadow-float);
-    padding: 9px 11px 10px;
-    pointer-events: none;
-    z-index: 2;
   }
 
   .tooltip-head {

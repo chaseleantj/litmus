@@ -18,6 +18,7 @@
 </script>
 
 <script lang="ts">
+  import { plural } from "./plural";
   import { sentenceTint } from "./scale";
 
   interface Props {
@@ -53,7 +54,7 @@
     return trimmed ? trimmed.split(/\s+/).length : 0;
   }
 
-  const words = $derived(wordCount(value) === 1 ? "1 word" : `${wordCount(value)} words`);
+  const words = $derived(plural(wordCount(value), "word"));
 
   /** The text cut into painted sentences and the plain whitespace between them.
    *  Every character of `value` appears exactly once, in order, so the mirror
