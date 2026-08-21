@@ -126,7 +126,7 @@
     {#if label}<label class="micro-label" for={id}>{label}</label>{/if}
     <span class="micro-label">{words}</span>
   </div>
-  <div class="box">
+  <div class="box resizable">
     {#if parts}<div
         class="text-mirror tint"
         aria-hidden="true"
@@ -171,16 +171,18 @@
     overflow-y: auto;
     resize: vertical;
     background: var(--surface);
-    border: 1px solid var(--hairline-strong);
+    border: 1px solid var(--hairline);
     border-radius: var(--radius-ctl);
     transition:
       border-color var(--speed) var(--ease-out),
       box-shadow var(--speed) var(--ease-out);
   }
 
+  /* Focus in the family's soft voice: firmed hairline plus a lift, matching
+     the global textarea:focus (app.css). */
   .box:focus-within {
-    border-color: var(--ink);
-    box-shadow: 0 0 0 3px hsl(var(--ink-hsl) / 0.07);
+    border-color: color-mix(in srgb, var(--ink) 32%, var(--hairline));
+    box-shadow: var(--shadow-hover);
   }
 
   .box textarea {

@@ -183,6 +183,9 @@
     };
   });
 
+  /** A scored reading on screen: the branch that renders as a card. */
+  const showCard = $derived(calibrated && !cs.error && chart !== null && verdict !== null);
+
   /** What each box paints: the sentence reading for the text that box holds,
    *  paired with the text it was measured on (ScoredTextarea drops the tint as
    *  soon as the two diverge). In single mode only the first box is on screen. */
@@ -359,7 +362,12 @@
     </p>
   {/if}
 
-  <div class="result" class:stale={cs.stale && calibrated && !cs.error} aria-live="polite">
+  <div
+    class="result"
+    class:carded={showCard}
+    class:stale={cs.stale && calibrated && !cs.error}
+    aria-live="polite"
+  >
     {#if !calibrated}
       <div class="panel-note">
         <h3>Teach it your voice first</h3>
@@ -380,6 +388,7 @@
         onRetry={queueRun}
       />
     {:else if chart && verdict}
+      <div class="card result-card">
       <p class="verdict">
         {#if verdict.kind === "identical"}
           You pasted the same text twice.
@@ -455,6 +464,7 @@
           {/if}
         </div>
       {/if}
+      </div>
     {:else if cs.scoring}
       <div class="loading-strip">
         <span class="sr-only">Scoring…</span>
@@ -574,25 +584,34 @@
   }
 
   .result {
-    max-width: 700px;
-    margin: 30px auto 0;
-    padding-top: 28px;
-    border-top: 1px solid var(--hairline);
+    margin-top: 26px;
     transition: opacity 200ms var(--ease-out);
+  }
+
+  /* Quiet states (empty, loading, not calibrated) stay a modest centered
+     column under a hairline; a scored reading becomes a full-width card. */
+  .result:not(.carded) {
+    max-width: 700px;
+    margin-inline: auto;
+    padding-top: 24px;
+    border-top: 1px solid var(--hairline);
   }
 
   .result.stale {
     opacity: 0.45;
   }
 
+  .result-card {
+    padding: 26px 30px 22px;
+    animation: rise 0.5s var(--ease-out);
+  }
+
   .verdict {
     font-size: var(--text-display);
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: -0.02em;
-    line-height: 1.35;
-    text-align: center;
+    line-height: 1.3;
     text-wrap: balance;
-    animation: rise 0.5s var(--ease-out);
   }
 
   .who.human {
@@ -608,10 +627,8 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    margin-top: 32px;
-    padding: 0 4px;
+    margin-top: 34px;
     transition: margin-top var(--speed) var(--ease-out);
-    animation: rise 0.5s var(--ease-out) 0.05s backwards;
   }
 
   /* Room for the raised row, added only when a label actually uses it. */
@@ -630,11 +647,8 @@
     padding-bottom: 26px;
   }
 
-  /* The strip's look is the shared .litmus-strip (app.css); only the
-     tie-band clipping is local. */
-  .strip {
-    overflow: hidden;
-  }
+  /* The strip's look — paper, gradient, develop animation — is the shared
+     .litmus-strip (app.css); only the tie-band is local. */
 
   /* The too-close-to-call zone: neutral ground, dashed edges. */
   .tie-band {
@@ -661,6 +675,15 @@
     transition:
       left var(--speed-slow) var(--ease-out),
       background 200ms var(--ease-out);
+    /* Lands after the paper has begun to develop under it. */
+    animation: pin-in 0.5s var(--ease-out) 0.45s backwards;
+  }
+
+  @keyframes pin-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.4);
+    }
   }
 
   .pin.side-ai {
@@ -688,6 +711,13 @@
     gap: 5px;
     white-space: nowrap;
     transition: left var(--speed-slow) var(--ease-out);
+    animation: label-in 0.4s var(--ease-out) 0.6s backwards;
+  }
+
+  @keyframes label-in {
+    from {
+      opacity: 0;
+    }
   }
 
   /* Near an end there is no room to center on the pin, so the label hangs from
@@ -731,8 +761,8 @@
     min-height: 28px;
     gap: 14px;
     flex-wrap: wrap;
-    margin-top: 32px;
-    padding-top: 16px;
+    margin-top: 28px;
+    padding-top: 14px;
     border-top: 1px solid var(--hairline);
   }
 

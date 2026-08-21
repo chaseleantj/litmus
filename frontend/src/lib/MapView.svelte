@@ -681,6 +681,13 @@
     inset: 0;
   }
 
+  /* Reset the paper while the axis is hidden, so each switch to the axis
+     view dips the strip again (the develop animation restarts when the
+     `visible` class returns it from `none`). */
+  .axis-chrome:not(.visible) .litmus-strip::before {
+    animation: none;
+  }
+
   .zero-line {
     position: absolute;
     left: 50%;

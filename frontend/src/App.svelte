@@ -135,7 +135,7 @@
 
 <style>
   .shell {
-    --column: 700px;
+    --column: 800px;
     --gutter: 24px;
     max-width: calc(var(--column) + var(--gutter) * 2);
     min-height: 100dvh;
@@ -147,7 +147,7 @@
   }
 
   .shell.wide {
-    --column: 920px;
+    --column: 1100px;
   }
 
   /* The header travels with the work rather than pinning to the window, so
@@ -159,30 +159,31 @@
     align-items: flex-end;
     justify-content: space-between;
     gap: 16px;
-    padding: 26px 0 14px;
+    padding: 30px 0 18px;
     animation: rise 0.55s var(--ease-out);
   }
 
+  /* A stacked lockup on the left edge: the display-size wordmark over its
+     supporting line, the way every heading in the family carries its blurb. */
   .brand {
     display: flex;
-    align-items: baseline;
-    gap: 14px;
+    flex-direction: column;
+    gap: 3px;
     min-width: 0;
   }
 
   .wordmark {
-    font-size: var(--text-display);
-    font-weight: 800;
-    letter-spacing: -0.04em;
-    line-height: 1.2;
+    font-size: var(--text-hero);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
   }
 
   .tagline {
     font-size: var(--text-body);
     color: var(--muted);
     white-space: nowrap;
-    /* The row's flexible item: when the header runs out of room the tagline
-       gives way with an ellipsis instead of overflowing under its neighbours. */
+    /* When the header runs out of room the tagline gives way with an
+       ellipsis instead of overflowing under its neighbours. */
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -201,17 +202,9 @@
     white-space: nowrap;
   }
 
-  /* The app's signature in one hairline: the litmus scale itself. */
   .header-rule {
-    height: 2px;
-    border-radius: var(--radius-pill);
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--ai) 55%, transparent),
-      color-mix(in srgb, var(--hairline-strong) 70%, transparent) 38%,
-      color-mix(in srgb, var(--hairline-strong) 70%, transparent) 62%,
-      color-mix(in srgb, var(--human) 55%, transparent)
-    );
+    height: 1px;
+    background: var(--hairline);
     animation: rise 0.55s var(--ease-out);
   }
 

@@ -490,16 +490,17 @@
 </div>
 
 <style>
+  /* The library is the family's edge sheet: a full-height floating panel
+     that slides in from the right, inset from the window on every side. */
   .overlay {
     position: fixed;
     inset: 0;
     z-index: 50;
     display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 48px 24px;
+    justify-content: flex-end;
+    padding: 10px;
     visibility: hidden;
-    transition: visibility 0s 200ms;
+    transition: visibility 0s 420ms;
   }
 
   .overlay.open {
@@ -524,20 +525,15 @@
     display: flex;
     flex-direction: column;
     width: min(880px, 100%);
-    max-height: min(760px, 100%);
     background: var(--bg);
     border-radius: 22px;
     box-shadow: var(--shadow-sheet);
-    opacity: 0;
-    transform: translateY(24px) scale(0.985);
-    transition:
-      opacity 250ms var(--ease-out),
-      transform 420ms var(--ease-sheet);
+    transform: translateX(calc(100% + 20px));
+    transition: transform 420ms var(--ease-sheet);
   }
 
   .overlay.open .sheet {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateX(0);
   }
 
   .sheet:focus-visible {
@@ -568,9 +564,18 @@
     max-width: 56ch;
   }
 
+  /* The family's close control: a hairline-ringed circle. */
   .close {
     margin-left: auto;
     flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--hairline-strong);
+  }
+
+  .close:hover {
+    border-color: var(--ink);
+    background: transparent;
   }
 
   /* No padding-top: a sticky child with top: 0 pins below the scrollport's
@@ -759,7 +764,6 @@
 
     .sheet {
       width: 100%;
-      max-height: 100%;
       border-radius: 0;
     }
 

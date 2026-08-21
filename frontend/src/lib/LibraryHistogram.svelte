@@ -167,7 +167,7 @@
   .plot {
     position: relative;
     height: 64px;
-    border-bottom: 1px solid var(--hairline-strong);
+    border-bottom: 1px solid var(--hairline);
   }
 
   .bars {
@@ -207,31 +207,31 @@
     left: 50%;
     bottom: 0;
     transform: translateX(-50%);
-    width: max(2px, calc(100% - 3px));
+    width: max(3px, calc(100% - 5px));
     height: 100%;
-    border-radius: 1.5px 1.5px 0 0;
-    background: hsl(var(--ink-hsl) / 0.03);
+    border-radius: 4px 4px 0 0;
+    background: hsl(var(--ink-hsl) / 0.025);
     pointer-events: none;
   }
 
   .slot.active .track {
-    background: hsl(var(--ink-hsl) / 0.05);
+    background: hsl(var(--ink-hsl) / 0.045);
   }
 
   .bar {
     position: relative;
     z-index: 1;
-    width: max(2px, calc(100% - 3px));
-    min-height: 2px;
-    border-radius: 1.5px 1.5px 0 0;
-    background: hsl(var(--ink-hsl) / 0.4);
+    width: max(3px, calc(100% - 5px));
+    min-height: 3px;
+    border-radius: 4px 4px 0 0;
+    background: hsl(var(--ink-hsl) / 0.2);
     transition:
       height var(--speed) var(--ease-out),
       background var(--speed) var(--ease-out);
   }
 
   .slot.active .bar {
-    background: hsl(var(--ink-hsl) / 0.78);
+    background: hsl(var(--ink-hsl) / 0.65);
   }
 
   .axis {
