@@ -62,7 +62,7 @@
   const poleInset = $derived(cssWidth < 520 ? 10 : 18);
 
   // Theme colors resolved once — canvas cannot read CSS variables itself.
-  let colors = { ai: "#5a4bbf", human: "#b45016", surface: "#fffdf8", ink: "#211b12" };
+  let colors = { ai: "#5347af", human: "#b4501f", surface: "#ffffff", ink: "#131315" };
 
   $effect(() => {
     if (!host || !canvas) return;
@@ -466,7 +466,7 @@
 <section aria-label="Map of your training library">
   {#if !calibrated}
     <div class="panel-note">
-      <h3 class="serif">Teach it your voice first</h3>
+      <h3>Teach it your voice first</h3>
       <p>
         The map draws every text in your library — AI drafts beside your versions. Add
         {library.examples.length === 1 ? "one more pair" : "two pairs"} and the picture appears.
@@ -581,6 +581,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    animation: rise 0.5s var(--ease-out);
   }
 
   .map-head {
@@ -595,12 +596,12 @@
   .head-ghost {
     width: 132px;
     height: 28px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-pill);
   }
 
   .count {
     font-size: var(--text-body);
-    color: var(--ink-secondary);
+    color: var(--muted);
   }
 
   .map-card {
@@ -609,7 +610,7 @@
 
   /* Dim the stale picture, not the pill that says it's being replaced. */
   .map-host {
-    transition: opacity 200ms var(--ease);
+    transition: opacity 200ms var(--ease-out);
   }
 
   .map-card.refreshing .map-host {
@@ -623,7 +624,7 @@
     justify-content: center;
     gap: 12px;
     height: clamp(340px, 52vh, 540px);
-    color: var(--ink-secondary);
+    color: var(--muted);
   }
 
   .map-host {
@@ -637,7 +638,7 @@
     width: 100%;
     height: 100%;
     display: block;
-    border-radius: var(--radius);
+    border-radius: var(--radius-card);
     touch-action: none;
   }
 
@@ -651,7 +652,7 @@
     position: absolute;
     inset: 0;
     opacity: 0;
-    transition: opacity var(--speed-slow) var(--ease);
+    transition: opacity var(--speed-slow) var(--ease-out);
     pointer-events: none;
   }
 
@@ -685,7 +686,7 @@
     left: 50%;
     top: 14%;
     bottom: 14%;
-    border-left: 1px dashed var(--border-strong);
+    border-left: 1px dashed var(--hairline-strong);
   }
 
   /* .tick / .tick-num are shared with the Detect strip — see app.css. */
@@ -696,9 +697,9 @@
     width: max-content;
     max-width: 264px; /* = TOOLTIP_W */
     background: var(--surface);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-toast);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-ctl);
+    box-shadow: var(--shadow-float);
     padding: 9px 11px 10px;
     pointer-events: none;
     z-index: 2;
@@ -747,19 +748,20 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    padding: 4px 10px;
+    padding: 4px 12px;
     font-size: var(--text-body);
-    font-weight: 500;
-    color: var(--ink-secondary);
+    font-weight: 600;
+    color: var(--muted);
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-hover);
   }
 
   .caption {
     text-align: center;
     font-size: var(--text-body);
-    color: var(--ink-secondary);
+    color: var(--muted);
     text-wrap: balance;
   }
 

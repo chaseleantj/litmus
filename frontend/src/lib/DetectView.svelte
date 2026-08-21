@@ -362,7 +362,7 @@
   <div class="result" class:stale={cs.stale && calibrated && !cs.error} aria-live="polite">
     {#if !calibrated}
       <div class="panel-note">
-        <h3 class="serif">Teach it your voice first</h3>
+        <h3>Teach it your voice first</h3>
         <p>
           Litmus scores writing against your own. Add
           {library.examples.length === 1 ? "one more pair" : "two pairs"} — an AI draft and your
@@ -380,7 +380,7 @@
         onRetry={queueRun}
       />
     {:else if chart && verdict}
-      <p class="verdict serif">
+      <p class="verdict">
         {#if verdict.kind === "identical"}
           You pasted the same text twice.
         {:else if verdict.kind === "tie"}
@@ -510,7 +510,7 @@
   .hint {
     margin: 16px 0 0;
     font-size: var(--text-body);
-    color: var(--ink-faint);
+    color: var(--faint);
     text-align: center;
   }
 
@@ -527,21 +527,21 @@
     justify-content: center;
     width: 20px;
     height: 20px;
-    border: 1px solid var(--border-strong);
+    border: 1px solid var(--hairline-strong);
     border-radius: 50%;
     background: var(--surface);
-    color: var(--ink-secondary);
+    color: var(--muted);
     font-size: var(--text-micro);
     font-weight: 600;
     transition:
-      color var(--speed) var(--ease),
-      border-color var(--speed) var(--ease);
+      color var(--speed) var(--ease-out),
+      border-color var(--speed) var(--ease-out);
   }
 
   .help-badge:hover,
   .help-badge:focus-visible {
-    color: var(--ink-2);
-    border-color: var(--ink-2);
+    color: var(--ink);
+    border-color: var(--ink);
   }
 
   /* Same surface as the map's tooltip — one look for everything that floats. */
@@ -552,9 +552,9 @@
     width: 264px;
     padding: 9px 11px 10px;
     background: var(--surface);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-toast);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-ctl);
+    box-shadow: var(--shadow-float);
     font-size: var(--text-body);
     line-height: 1.5;
     color: var(--ink);
@@ -562,8 +562,8 @@
     opacity: 0;
     visibility: hidden;
     transition:
-      opacity var(--speed) var(--ease),
-      visibility var(--speed) var(--ease);
+      opacity var(--speed) var(--ease-out),
+      visibility var(--speed) var(--ease-out);
     z-index: 2;
   }
 
@@ -577,8 +577,8 @@
     max-width: 700px;
     margin: 30px auto 0;
     padding-top: 28px;
-    border-top: 1px solid var(--border);
-    transition: opacity 200ms var(--ease);
+    border-top: 1px solid var(--hairline);
+    transition: opacity 200ms var(--ease-out);
   }
 
   .result.stale {
@@ -586,13 +586,13 @@
   }
 
   .verdict {
-    font-family: var(--font-serif);
     font-size: var(--text-display);
-    font-weight: 500;
-    letter-spacing: -0.01em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     line-height: 1.35;
     text-align: center;
     text-wrap: balance;
+    animation: rise 0.5s var(--ease-out);
   }
 
   .who.human {
@@ -610,7 +610,8 @@
     gap: 14px;
     margin-top: 32px;
     padding: 0 4px;
-    transition: margin-top var(--speed) var(--ease);
+    transition: margin-top var(--speed) var(--ease-out);
+    animation: rise 0.5s var(--ease-out) 0.05s backwards;
   }
 
   /* Room for the raised row, added only when a label actually uses it. */
@@ -635,14 +636,14 @@
     overflow: hidden;
   }
 
-  /* The too-close-to-call zone: neutral paper, dashed edges. */
+  /* The too-close-to-call zone: neutral ground, dashed edges. */
   .tie-band {
     position: absolute;
     top: 0;
     bottom: 0;
     background: var(--surface);
-    border-left: 1px dashed var(--border-strong);
-    border-right: 1px dashed var(--border-strong);
+    border-left: 1px dashed var(--hairline-strong);
+    border-right: 1px dashed var(--hairline-strong);
   }
 
   /* .tick / .tick-num are shared with the map's axis view — see app.css. */
@@ -654,12 +655,12 @@
     height: 15px;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: var(--ink-secondary);
+    background: var(--muted);
     border: 2.5px solid var(--surface);
     box-shadow: 0 1px 4px hsl(var(--ink-hsl) / 0.3);
     transition:
-      left var(--speed-slow) var(--ease),
-      background 200ms var(--ease);
+      left var(--speed-slow) var(--ease-out),
+      background 200ms var(--ease-out);
   }
 
   .pin.side-ai {
@@ -686,7 +687,7 @@
     align-items: baseline;
     gap: 5px;
     white-space: nowrap;
-    transition: left var(--speed-slow) var(--ease);
+    transition: left var(--speed-slow) var(--ease-out);
   }
 
   /* Near an end there is no room to center on the pin, so the label hangs from
@@ -711,8 +712,8 @@
   /* The value is the measurement, the name is scaffolding — so the number
      carries the weight and the label recedes to the axis's own colour. */
   .pin-name {
-    font-weight: 500;
-    color: var(--ink-faint);
+    font-weight: 600;
+    color: var(--faint);
   }
 
   .pin-value {
@@ -732,7 +733,7 @@
     flex-wrap: wrap;
     margin-top: 32px;
     padding-top: 16px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--hairline);
   }
 
   .save {
@@ -744,7 +745,7 @@
 
   .save-label {
     font-size: var(--text-body);
-    color: var(--ink-secondary);
+    color: var(--muted);
   }
 
   .saved-note {
@@ -752,8 +753,8 @@
     align-items: center;
     gap: 6px;
     font-size: var(--text-body);
-    font-weight: 500;
-    color: var(--ink-secondary);
+    font-weight: 600;
+    color: var(--muted);
   }
 
   /* ---------- Notes & states ---------- */
@@ -770,8 +771,8 @@
   /* Stands in for the litmus strip while scoring: same shape, no reading. */
   .skeleton {
     height: 12px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-pill);
   }
 
   @media (max-width: 760px) {

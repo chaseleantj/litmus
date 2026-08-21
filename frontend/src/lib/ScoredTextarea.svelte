@@ -171,16 +171,16 @@
     overflow-y: auto;
     resize: vertical;
     background: var(--surface);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--radius-ctl);
     transition:
-      border-color var(--speed) var(--ease),
-      box-shadow var(--speed) var(--ease);
+      border-color var(--speed) var(--ease-out),
+      box-shadow var(--speed) var(--ease-out);
   }
 
   .box:focus-within {
-    border-color: var(--ink-2);
-    box-shadow: 0 0 0 3px hsl(var(--ink-hsl) / 0.08);
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px hsl(var(--ink-hsl) / 0.07);
   }
 
   .box textarea {
@@ -220,7 +220,7 @@
     overflow-wrap: break-word;
     pointer-events: none;
     user-select: none;
-    animation: tint-in var(--speed) var(--ease);
+    animation: tint-in var(--speed) var(--ease-out);
   }
 
   .tint span {

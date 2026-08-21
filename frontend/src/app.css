@@ -1,66 +1,69 @@
-/* ---------- Design tokens (Paper & ink) ----------
-   Litmus reads like a well-set lab notebook: warm paper ground, ink
-   typography, and exactly two semantic hues — indigo for AI, ember for
-   human. Fraunces (serif) carries identity: the wordmark, verdicts and
-   panel titles. Manrope carries the UI. Nothing else gets color. */
+/* ---------- Design tokens (Monochrome, spacefs school) ----------
+   The chrome is strict grayscale — near-black ink on near-white ground,
+   hairline borders, pill controls — so the only color on the page is the
+   data itself: indigo for AI, ember for human. Manrope carries everything;
+   hierarchy comes from weight and tracking, not from a second family. */
 :root {
-  /* Ink and border carry their raw components too: shadows, backdrops and
-     hover tints are the same colour at low alpha, and must stay that way. */
-  --ink-hsl: 30 25% 12%;
-  --border-hsl: 42 18% 86.5%;
+  /* Ink carries its raw components too: shadows, backdrops and hover tints
+     are the same color at low alpha, and must stay that way. */
+  --ink-hsl: 240 5% 8%;
 
-  --paper: hsl(45 33% 96%);
-  --surface: hsl(45 45% 99%);
-  --surface-muted: hsl(45 25% 93%);
-  --border: hsl(var(--border-hsl));
-  --border-strong: hsl(42 15% 76%);
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-muted: #f0f0ed;
+  --hairline: #e8e8e4;
+  --hairline-strong: #d9d9d5;
   --ink: hsl(var(--ink-hsl));
-  --ink-2: hsl(30 14% 27%);
-  /* Both clear 4.5:1 on --paper with margin to spare. --ink-faint carries the
-     chart's numeric readout and the "Show more" control, so it is held to the
-     same bar as body copy rather than treated as decoration. */
-  --ink-secondary: hsl(30 9% 41%);
-  --ink-faint: hsl(32 8% 43%);
+  --ink-2: #3c3c3e;
+  /* Both clear 4.5:1 on --bg. --faint carries the chart's numeric readout
+     and the "Show more" control, so it is held to the same bar as body copy
+     rather than treated as decoration. */
+  --muted: #62625f;
+  --faint: #74746f;
 
   /* The wash under a hovered ghost control */
-  --tint: hsl(var(--border-hsl) / 0.55);
+  --tint: hsl(var(--ink-hsl) / 0.05);
 
-  /* The two poles of the litmus scale. Like ink and border, they carry their
-     raw components too: the sentence tint is the same hue at low alpha. */
-  --ai-hsl: 248 45% 50%;
-  --human-hsl: 19 72% 42%;
+  /* The two poles of the litmus scale — the one color in the app. Like ink,
+     they carry their raw components too: the sentence tint is the same hue
+     at low alpha. */
+  --ai-hsl: 247 42% 48%;
+  --human-hsl: 18 68% 42%;
   --ai: hsl(var(--ai-hsl));
   --human: hsl(var(--human-hsl));
 
-  --danger: hsl(2 64% 45%);
-  --danger-soft: hsl(6 60% 96%);
+  --danger: hsl(2 58% 44%);
+  --danger-soft: hsl(4 55% 96%);
 
-  /* Shape rule: sheet/cards 12px, controls 8px, small controls 6px */
-  --radius: 12px;
-  --radius-sm: 8px;
-  --radius-xs: 6px;
+  /* Shape rule: sheets and cards are soft (18px+), inputs and floating bits
+     are 12px, tiny inline pieces 8px — and every control is a pill. */
+  --radius-card: 18px;
+  --radius-ctl: 12px;
+  --radius-xs: 8px;
+  --radius-pill: 999px;
 
-  --shadow-sheet:
-    0 24px 48px -12px hsl(var(--ink-hsl) / 0.18),
-    0 4px 12px -4px hsl(var(--ink-hsl) / 0.08);
-  --shadow-toast:
-    0 10px 24px -6px hsl(var(--ink-hsl) / 0.25),
-    0 2px 6px -2px hsl(var(--ink-hsl) / 0.12);
+  --shadow-hover: 0 10px 30px hsl(var(--ink-hsl) / 0.07);
+  --shadow-float:
+    0 10px 24px -6px hsl(var(--ink-hsl) / 0.18),
+    0 2px 6px -2px hsl(var(--ink-hsl) / 0.1);
+  --shadow-sheet: 0 24px 80px hsl(var(--ink-hsl) / 0.22);
 
-  --font-sans: "Manrope", system-ui, "Segoe UI", Roboto, sans-serif;
-  --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "Manrope", -apple-system, system-ui, "Segoe UI", sans-serif;
 
   /* Type scale. Every step is visibly different from its neighbours.
      One identity size covers the wordmark and the verdict. */
   --text-micro: 11px; /* labels, axis ticks, pin values */
-  --text-body: 13px; /* UI: controls, prose, list text, row metadata */
+  --text-body: 13.5px; /* UI: controls, prose, list text, row metadata */
   --text-content: 15px; /* the writing itself — the text under examination */
-  --text-title: 21px; /* sheet, panel and editor headings */
-  --text-display: 24px; /* wordmark and verdict */
+  --text-title: 20px; /* sheet, panel and editor headings */
+  --text-display: 26px; /* wordmark and verdict */
 
-  --speed: 150ms;
-  --speed-slow: 420ms;
-  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --speed: 180ms;
+  --speed-slow: 480ms;
+  /* Spring-smooth pair: --ease-out for everything that moves or lifts,
+     --ease-sheet for the big surfaces that slide in. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
 
   color-scheme: light;
 }
@@ -74,7 +77,7 @@
 
 body {
   margin: 0;
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--text-body);
@@ -90,6 +93,14 @@ p {
   margin: 0;
 }
 
+h1,
+h2,
+h3 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
 button {
   font: inherit;
   cursor: pointer;
@@ -101,39 +112,42 @@ input {
   color: inherit;
 }
 
-/* The serif voice: verdicts, titles, the wordmark */
-.serif {
-  font-family: var(--font-serif);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  font-variation-settings: "SOFT" 0, "WONK" 0;
+::selection {
+  background: var(--ink);
+  color: var(--bg);
 }
 
-/* ---------- Buttons (flat, bordered — no shadows) ---------- */
+/* ---------- Buttons (pills — flat, hairline, a soft lift on hover) ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   height: 36px;
-  padding: 0 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline-strong);
   background: var(--surface);
   color: var(--ink-2);
   font-size: var(--text-body);
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   transition:
-    background var(--speed) var(--ease),
-    border-color var(--speed) var(--ease),
-    color var(--speed) var(--ease);
+    background var(--speed) var(--ease-out),
+    border-color var(--speed) var(--ease-out),
+    color var(--speed) var(--ease-out),
+    transform 0.3s var(--ease-out),
+    box-shadow 0.3s var(--ease-out);
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--surface-muted);
-  border-color: var(--border-strong);
+  border-color: var(--ink);
   color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn:disabled {
@@ -144,13 +158,14 @@ input {
 .btn-primary {
   background: var(--ink);
   border-color: var(--ink);
-  color: var(--paper);
+  color: var(--bg);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: hsl(var(--ink-hsl) / 0.88);
+  background: hsl(var(--ink-hsl) / 0.85);
   border-color: transparent;
-  color: var(--paper);
+  color: var(--bg);
+  box-shadow: var(--shadow-hover);
 }
 
 .btn-danger {
@@ -168,34 +183,35 @@ input {
 .btn-ghost {
   border-color: transparent;
   background: transparent;
-  color: var(--ink-2);
+  color: var(--muted);
 }
 
 .btn-ghost:hover:not(:disabled) {
   background: var(--tint);
   border-color: transparent;
   color: var(--ink);
+  transform: none;
 }
 
 /* The one small size: 28px tall, shared by .btn.small, .icon-btn and the
    segmented control, so any row of controls lines up without adjustment. */
 .btn.small {
   height: 28px;
-  padding: 0 10px;
+  padding: 0 12px;
   font-size: var(--text-body);
-  border-radius: var(--radius-xs);
   gap: 5px;
 }
 
 /* Segmented control: mode switches (one/two texts, map/axis, view tabs).
-   Sized to the 28px small-control height so it sits level with .btn.small. */
+   A hairline pill track; the active half inverts to ink, the monochrome way
+   of saying "on". Sized to the 28px small-control height. */
 .seg {
   display: inline-flex;
-  padding: 1px;
+  padding: 2px;
   gap: 2px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-pill);
 }
 
 .seg button {
@@ -203,22 +219,21 @@ input {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  /* 24px is the WCAG 2.2 minimum target; the track stays 28px overall. */
-  height: 24px;
+  /* 22px inside the 2px-padded track keeps the whole control at 28px. */
+  height: 22px;
   border: none;
   background: none;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-pill);
   padding: 0 11px;
   font-size: var(--text-body);
-  /* Same weight in both states: the active half is marked by its raised
-     surface and darker ink, and a weight change would reflow the track. */
-  font-weight: 500;
+  /* Same weight in both states: the active half is marked by its inverted
+     surface, and a weight change would reflow the track. */
+  font-weight: 600;
   line-height: 1;
-  color: var(--ink-secondary);
+  color: var(--muted);
   transition:
-    color var(--speed) var(--ease),
-    background var(--speed) var(--ease),
-    box-shadow var(--speed) var(--ease);
+    color var(--speed) var(--ease-out),
+    background var(--speed) var(--ease-out);
 }
 
 .seg button:hover:not(.active) {
@@ -226,16 +241,15 @@ input {
 }
 
 .seg button.active {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: 0 1px 2px hsl(var(--ink-hsl) / 0.08);
+  background: var(--ink);
+  color: var(--bg);
 }
 
 .seg button:focus-visible {
   outline-offset: 1px;
 }
 
-/* Square icon-only ghost button for row actions */
+/* Round icon-only ghost button for row actions */
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -243,12 +257,12 @@ input {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: var(--radius-xs);
+  border-radius: 50%;
   background: transparent;
-  color: var(--ink-2);
+  color: var(--muted);
   transition:
-    background var(--speed) var(--ease),
-    color var(--speed) var(--ease);
+    background var(--speed) var(--ease-out),
+    color var(--speed) var(--ease-out);
 }
 
 .icon-btn:hover:not(:disabled) {
@@ -276,30 +290,30 @@ button:focus-visible {
 textarea,
 .text-mirror {
   font-size: var(--text-content);
-  padding: 12px 14px;
+  padding: 13px 15px;
   line-height: 1.6;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-ctl);
 }
 
 textarea {
   width: 100%;
-  border-color: var(--border-strong);
+  border-color: var(--hairline-strong);
   background: var(--surface);
   resize: vertical;
   transition:
-    border-color var(--speed) var(--ease),
-    box-shadow var(--speed) var(--ease);
+    border-color var(--speed) var(--ease-out),
+    box-shadow var(--speed) var(--ease-out);
 }
 
 textarea::placeholder {
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 textarea:focus {
   outline: none;
-  border-color: var(--ink-2);
-  box-shadow: 0 0 0 3px hsl(var(--ink-hsl) / 0.08);
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px hsl(var(--ink-hsl) / 0.07);
 }
 
 textarea:disabled {
@@ -310,18 +324,19 @@ textarea:disabled {
 /* ---------- Surfaces & shared bits ---------- */
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
 }
 
 /* The one small-label style: every caption, column header, axis label and
    count uses this, so pages carry exactly three text roles —
-   serif display, body, micro. */
+   display, body, micro. */
 .micro-label {
   font-size: var(--text-micro);
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: var(--ink-secondary);
+  color: var(--muted);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -380,7 +395,7 @@ textarea:disabled {
 
 .pair-cols > :last-child {
   padding-left: 20px;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--hairline);
 }
 
 @media (max-width: 720px) {
@@ -416,12 +431,13 @@ textarea:disabled {
 /* Keyboard keys, quoted inline */
 kbd {
   display: inline-block;
-  padding: 1px 5px;
+  padding: 1px 6px;
   font-family: inherit;
   font-size: var(--text-micro);
-  color: var(--ink-secondary);
+  font-weight: 600;
+  color: var(--muted);
   background: var(--surface);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--hairline-strong);
   border-bottom-width: 2px;
   border-radius: var(--radius-xs);
 }
@@ -431,7 +447,7 @@ kbd {
    correctly as a card in the library and as a bare note under the result. */
 .panel-note {
   text-align: center;
-  color: var(--ink-secondary);
+  color: var(--muted);
 }
 
 .card.panel-note {
@@ -439,10 +455,7 @@ kbd {
 }
 
 .panel-note h3 {
-  font-family: var(--font-serif);
   font-size: var(--text-title);
-  font-weight: 500;
-  letter-spacing: -0.01em;
   color: var(--ink);
   margin-bottom: 8px;
 }
@@ -470,14 +483,14 @@ kbd {
   flex-wrap: wrap;
 }
 
-/* The litmus scale itself: AI indigo fading through paper into human ember.
-   One definition — the Detect result chart and the map's axis view must
-   always be the same scale to the eye. */
+/* The litmus scale itself: AI indigo fading through the ground into human
+   ember. One definition — the Detect result chart and the map's axis view
+   must always be the same scale to the eye. */
 .litmus-strip {
   position: relative;
   height: 12px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline);
   background: linear-gradient(
     90deg,
     color-mix(in srgb, var(--ai) 52%, var(--surface)),
@@ -496,12 +509,12 @@ kbd {
   top: 16px;
   width: 1px;
   height: 5px;
-  background: var(--border-strong);
+  background: var(--hairline-strong);
   transform: translateX(-0.5px);
 }
 
 .tick.zero {
-  background: var(--ink-faint);
+  background: var(--faint);
 }
 
 .tick-num {
@@ -509,7 +522,7 @@ kbd {
   top: 7px;
   left: 50%;
   transform: translateX(-50%);
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 /* Loading placeholder: the consumer sets the shape, this sets the shimmer. */
@@ -536,16 +549,16 @@ kbd {
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid hsl(45 33% 96% / 0.35);
-  border-top-color: var(--paper);
+  border: 2px solid hsl(0 0% 100% / 0.35);
+  border-top-color: var(--bg);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   flex-shrink: 0;
 }
 
 .spinner-dark {
-  border-color: var(--border-strong);
-  border-top-color: var(--ink-secondary);
+  border-color: var(--hairline-strong);
+  border-top-color: var(--muted);
 }
 
 .btn-danger .spinner {
@@ -556,6 +569,15 @@ kbd {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* The page-level entrance: sections and results rise gently into place.
+   Consumers opt in with `animation: rise ...` so timing stays theirs. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
 }
 

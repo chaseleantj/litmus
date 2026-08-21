@@ -1,7 +1,8 @@
 import { mount } from "svelte";
 import "@fontsource/manrope/latin-500.css";
-import "@fontsource/fraunces/latin-500.css";
-import "@fontsource/fraunces/latin-500-italic.css";
+import "@fontsource/manrope/latin-600.css";
+import "@fontsource/manrope/latin-700.css";
+import "@fontsource/manrope/latin-800.css";
 import "./app.css";
 import App from "./App.svelte";
 

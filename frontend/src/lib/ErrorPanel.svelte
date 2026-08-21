@@ -14,7 +14,7 @@
 </script>
 
 <div class="panel-note" role="alert">
-  <h3 class="serif">{heading}</h3>
+  <h3>{heading}</h3>
   <p class="error-text">{error.message}</p>
   {#if error.status === 409}
     <button class="btn btn-primary" onclick={onOpenLibrary}>Add training pairs</button>

@@ -290,7 +290,7 @@
   >
     <header class="sheet-head">
       <div class="sheet-title">
-        <h2 class="serif">Training library</h2>
+        <h2>Training library</h2>
         <p class="sheet-sub">
           Each pair is the same content: a text written by an AI, and your version. Together they define what "sounds like you" means.
         </p>
@@ -510,9 +510,9 @@
   .backdrop {
     position: absolute;
     inset: 0;
-    background: hsl(var(--ink-hsl) / 0.4);
+    background: hsl(var(--ink-hsl) / 0.28);
     opacity: 0;
-    transition: opacity 200ms var(--ease);
+    transition: opacity 250ms var(--ease-out);
   }
 
   .overlay.open .backdrop {
@@ -525,20 +525,19 @@
     flex-direction: column;
     width: min(880px, 100%);
     max-height: min(760px, 100%);
-    background: var(--paper);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    background: var(--bg);
+    border-radius: 22px;
     box-shadow: var(--shadow-sheet);
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(24px) scale(0.985);
     transition:
-      opacity 200ms var(--ease),
-      transform 200ms var(--ease);
+      opacity 250ms var(--ease-out),
+      transform 420ms var(--ease-sheet);
   }
 
   .overlay.open .sheet {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 
   .sheet:focus-visible {
@@ -550,7 +549,7 @@
     align-items: flex-start;
     gap: 16px;
     padding: 22px 24px 16px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--hairline);
   }
 
   .sheet-title {
@@ -559,14 +558,13 @@
 
   .sheet-head h2 {
     font-size: var(--text-title);
-    letter-spacing: -0.01em;
   }
 
   .sheet-sub {
     margin-top: 4px;
     font-size: var(--text-body);
     line-height: 1.5;
-    color: var(--ink-secondary);
+    color: var(--muted);
     max-width: 56ch;
   }
 
@@ -595,7 +593,7 @@
 
   .count {
     font-size: var(--text-body);
-    color: var(--ink-secondary);
+    color: var(--muted);
     font-weight: 500;
   }
 
@@ -630,8 +628,8 @@
     top: 0;
     z-index: 2;
     padding: 10px 19px 8px;
-    background: var(--paper);
-    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    border-bottom: 1px solid var(--hairline);
   }
 
   .list-head span {
@@ -662,11 +660,14 @@
 
   .pair {
     padding: 15px 18px 9px;
-    transition: border-color var(--speed) var(--ease);
+    transition:
+      border-color var(--speed) var(--ease-out),
+      box-shadow 0.3s var(--ease-out);
   }
 
   .pair:hover {
-    border-color: var(--border-strong);
+    border-color: var(--hairline-strong);
+    box-shadow: var(--shadow-hover);
   }
 
   .side {
@@ -699,7 +700,7 @@
 
   .meta {
     font-size: var(--text-body);
-    color: var(--ink-faint);
+    color: var(--faint);
   }
 
   .show-more {
@@ -708,7 +709,7 @@
     background: none;
     padding: 0;
     font-size: var(--text-body);
-    color: var(--ink-faint);
+    color: var(--faint);
     text-decoration: underline;
     text-underline-offset: 3px;
   }
@@ -726,7 +727,7 @@
     align-items: center;
     gap: 4px;
     opacity: 0;
-    transition: opacity var(--speed) var(--ease);
+    transition: opacity var(--speed) var(--ease-out);
   }
 
   .pair:hover .row-actions,
@@ -760,7 +761,6 @@
       width: 100%;
       max-height: 100%;
       border-radius: 0;
-      border: none;
     }
 
     .list-head {

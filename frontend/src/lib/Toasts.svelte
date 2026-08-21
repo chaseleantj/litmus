@@ -36,11 +36,11 @@
     display: flex;
     align-items: center;
     gap: 9px;
-    padding: 10px 12px;
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-toast);
+    padding: 10px 14px;
+    border-radius: var(--radius-ctl);
+    box-shadow: var(--shadow-float);
     font-size: var(--text-body);
-    animation: rise 180ms var(--ease);
+    animation: toast-rise 0.35s var(--ease-out);
   }
 
   .toast > span {
@@ -50,12 +50,12 @@
 
   .toast.success {
     background: var(--ink);
-    color: var(--paper);
+    color: var(--bg);
   }
 
   .toast.error {
     background: var(--danger);
-    color: var(--paper);
+    color: var(--bg);
   }
 
   .toast button {
@@ -79,17 +79,17 @@
   }
 
   .toast button:focus-visible {
-    outline-color: var(--paper);
+    outline-color: var(--bg);
   }
 
-  @keyframes rise {
+  @keyframes toast-rise {
     from {
       opacity: 0;
-      transform: translateY(6px);
+      transform: translateY(8px) scale(0.98);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateY(0) scale(1);
     }
   }
 </style>

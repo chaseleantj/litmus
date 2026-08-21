@@ -30,7 +30,7 @@
 </script>
 
 <form class="card editor" onsubmit={submit}>
-  <h3 class="serif">{heading}</h3>
+  <h3>{heading}</h3>
   <!-- The library's column headers sit directly above this editor and label
        both columns, so the fields only name themselves once they stack. -->
   <div class="fields pair-cols">
@@ -81,7 +81,6 @@
 
   h3 {
     font-size: var(--text-title);
-    letter-spacing: -0.01em;
     margin-bottom: 14px;
   }
 
@@ -107,6 +106,6 @@
   .hint {
     margin-right: auto;
     font-size: var(--text-body);
-    color: var(--ink-faint);
+    color: var(--faint);
   }
 </style>

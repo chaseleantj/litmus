@@ -84,7 +84,7 @@
 <div class="shell" class:wide={view === "map" || compareState.mode === "pair"}>
   <header>
     <div class="brand">
-      <h1 class="wordmark serif">Litmus</h1>
+      <h1 class="wordmark">Litmus</h1>
       <p class="tagline">A personal test for AI-sounding writing.</p>
     </div>
     <div class="header-side">
@@ -143,7 +143,7 @@
     padding: 0 var(--gutter) 48px;
     display: flex;
     flex-direction: column;
-    transition: max-width var(--speed-slow) var(--ease);
+    transition: max-width var(--speed-slow) var(--ease-out);
   }
 
   .shell.wide {
@@ -160,6 +160,7 @@
     justify-content: space-between;
     gap: 16px;
     padding: 26px 0 14px;
+    animation: rise 0.55s var(--ease-out);
   }
 
   .brand {
@@ -171,14 +172,20 @@
 
   .wordmark {
     font-size: var(--text-display);
-    font-style: italic;
+    font-weight: 800;
+    letter-spacing: -0.04em;
     line-height: 1.2;
   }
 
   .tagline {
     font-size: var(--text-body);
-    color: var(--ink-secondary);
+    color: var(--muted);
     white-space: nowrap;
+    /* The row's flexible item: when the header runs out of room the tagline
+       gives way with an ellipsis instead of overflowing under its neighbours. */
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .header-side {
@@ -189,7 +196,7 @@
 
   .mock-note {
     font-size: var(--text-body);
-    font-weight: 500;
+    font-weight: 600;
     color: var(--human);
     white-space: nowrap;
   }
@@ -197,14 +204,15 @@
   /* The app's signature in one hairline: the litmus scale itself. */
   .header-rule {
     height: 2px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: linear-gradient(
       90deg,
       color-mix(in srgb, var(--ai) 55%, transparent),
-      color-mix(in srgb, var(--border-strong) 70%, transparent) 38%,
-      color-mix(in srgb, var(--border-strong) 70%, transparent) 62%,
+      color-mix(in srgb, var(--hairline-strong) 70%, transparent) 38%,
+      color-mix(in srgb, var(--hairline-strong) 70%, transparent) 62%,
       color-mix(in srgb, var(--human) 55%, transparent)
     );
+    animation: rise 0.55s var(--ease-out);
   }
 
   /* The work sits in the middle of whatever room is left under the header,
@@ -216,6 +224,7 @@
     padding-top: 40px;
     /* Biases the block upward: sitting on the true centre line reads low. */
     padding-bottom: 6vh;
+    animation: rise 0.55s var(--ease-out) 0.06s backwards;
   }
 
   /* Beside the wordmark the tagline crowds the pills; under it, it doesn't. */

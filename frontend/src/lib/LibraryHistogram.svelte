@@ -167,7 +167,7 @@
   .plot {
     position: relative;
     height: 64px;
-    border-bottom: 1px solid var(--border-strong);
+    border-bottom: 1px solid var(--hairline-strong);
   }
 
   .bars {
@@ -188,7 +188,7 @@
     border: none;
     background: transparent;
     border-radius: 2px;
-    transition: background var(--speed) var(--ease);
+    transition: background var(--speed) var(--ease-out);
   }
 
   .slot.active {
@@ -226,8 +226,8 @@
     border-radius: 1.5px 1.5px 0 0;
     background: hsl(var(--ink-hsl) / 0.4);
     transition:
-      height var(--speed) var(--ease),
-      background var(--speed) var(--ease);
+      height var(--speed) var(--ease-out),
+      background var(--speed) var(--ease-out);
   }
 
   .slot.active .bar {
@@ -241,7 +241,7 @@
   }
 
   .axis .micro-label {
-    color: var(--ink-faint);
+    color: var(--faint);
   }
 
   .tip {
@@ -252,10 +252,10 @@
     width: max-content;
     max-width: 180px;
     padding: 5px 8px;
-    border: 1px solid var(--border-strong);
+    border: 1px solid var(--hairline);
     border-radius: var(--radius-xs);
     background: var(--surface);
-    box-shadow: var(--shadow-toast);
+    box-shadow: var(--shadow-float);
     color: var(--ink);
     font-size: var(--text-micro);
     font-variant-numeric: tabular-nums;
@@ -279,7 +279,7 @@
   .note {
     margin-top: 6px;
     font-size: var(--text-body);
-    color: var(--ink-secondary);
+    color: var(--muted);
   }
 
   .empty {
