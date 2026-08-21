@@ -4,7 +4,7 @@ Litmus tells you whether text sounds like you, or like an AI wrote it. You feed 
 
 ## What it does
 
-You use Litmus in a few simple steps. First, you paste in a text and get a score, or paste two and see which one sounds more like you. Each sentence is faintly shaded by how it reads on its own, so you can see which parts lean which way; the score is still read off the whole text, for the reasons in [docs/sentence-scoring.md](docs/sentence-scoring.md). Then you manage the AI/human pairs the score is learned from. You need at least 2 pairs. Finally, you can plot your whole library on a 2D map.
+You use Litmus in a few simple steps. First, you paste in a text and get a score, or paste two and see which one sounds more like you. Each sentence is faintly shaded by how it reads on its own, so you can see which parts lean which way; the score is still read off the whole text, for the reasons in [docs/sentence-scoring.md](docs/sentence-scoring.md). Then you manage the AI/human pairs the score is learned from, newest first — and the play button on a pair sends it straight to the detector, where the two versions land side by side already scored. You need at least 2 pairs. Finally, you can plot your whole library on a 2D map.
 
 ![Detect: paste a text and score it](docs/screenshots/detect.png)
 

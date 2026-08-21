@@ -1,8 +1,10 @@
 <script lang="ts">
   import { ArrowsLeftRight, Check, Play } from "phosphor-svelte";
   import {
+    alreadySaved,
     clearResults,
     compareState as cs,
+    loadPair,
     markStale,
     queueRun,
     ready,
@@ -32,6 +34,13 @@
   }
 
   let { onOpenLibrary, suspended }: Props = $props();
+
+  let firstBox = $state<ReturnType<typeof ScoredTextarea>>();
+
+  /** Called by the shell after it sends a pair over from the library. */
+  export function focusFirstText() {
+    firstBox?.focusFromTop();
+  }
 
   const pair = $derived(cs.mode === "pair");
   // Derived from what was scored, not from what is currently typed: everything
@@ -254,20 +263,17 @@
       return;
     }
     const p = library.examples[Math.floor(Math.random() * library.examples.length)];
+    // Which side lands first is a coin flip, so the shading is not always
+    // read in the same order.
     const flip = Math.random() < 0.5;
-    if (pair) {
-      cs.first = flip ? p.ai : p.human;
-      cs.second = flip ? p.human : p.ai;
-    } else {
-      cs.first = flip ? p.ai : p.human;
-    }
-    queueRun();
+    loadPair(flip ? p.ai : p.human, flip ? p.human : p.ai);
   }
 </script>
 
 <section aria-label="Detect AI writing">
   <div class="inputs" class:pair>
     <ScoredTextarea
+      bind:this={firstBox}
       id="det-t1"
       label={pair ? "First text" : undefined}
       ariaLabel="Text to score"
@@ -426,8 +432,8 @@
 
       {#if pair && verdict.kind !== "identical"}
         <div class="result-foot">
-          {#if cs.savedPair}
-            <span class="saved-note"><Check size={14} weight="bold" /> Saved to your library</span>
+          {#if alreadySaved()}
+            <span class="saved-note"><Check size={14} weight="bold" /> Already in your library</span>
           {:else}
             <span class="save">
               <span class="save-label">Human version:</span>

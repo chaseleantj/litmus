@@ -31,6 +31,20 @@ export function isCalibrated(): boolean {
   return library.loading || library.error !== null || library.examples.length >= MIN_PAIRS;
 }
 
+/**
+ * The library as the sheet lists it: newest first, so a pair you just added is
+ * the first thing you see. The API answers in ascending id — the order the
+ * direction and the map are keyed to — so the recency order is applied here,
+ * as the display choice it is. Sorted on created_at rather than id because
+ * imported and seeded rows carry their own dates, which need not follow the
+ * ids; id breaks ties within a batch stamped the same instant.
+ */
+export function newestFirst(): Example[] {
+  return [...library.examples].sort(
+    (a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id,
+  );
+}
+
 export async function loadLibrary(): Promise<void> {
   library.loading = true;
   library.error = null;

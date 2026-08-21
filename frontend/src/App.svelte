@@ -1,12 +1,14 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import { Books } from "phosphor-svelte";
   import { mockActive } from "./lib/api";
-  import { compareState } from "./lib/compareState.svelte";
+  import { compareState, loadPair } from "./lib/compareState.svelte";
   import DetectView from "./lib/DetectView.svelte";
   import LibrarySheet from "./lib/LibrarySheet.svelte";
   import MapView from "./lib/MapView.svelte";
   import Toasts from "./lib/Toasts.svelte";
   import { loadLibrary } from "./lib/library.svelte";
+  import type { Example } from "./lib/types";
 
   type View = "detect" | "map";
 
@@ -24,6 +26,7 @@
   let view = $state<View>(viewFromHash() ?? "detect");
   let libraryOpen = $state(libraryFromHash());
   let opener: HTMLElement | null = null;
+  let detect = $state<ReturnType<typeof DetectView>>();
 
   const viewHash = () => (view === "map" ? "#/map" : "#/");
 
@@ -44,6 +47,23 @@
     history.replaceState(null, "", viewHash());
     opener?.focus();
     opener = null;
+  }
+
+  /**
+   * A pair from the library, opened in the detector: the sheet closes, Detect
+   * comes forward if the map was showing, and the two texts land in compare
+   * mode already scoring. Focus goes to the first box rather than back to the
+   * opener — the boxes are what the user was just sent to.
+   */
+  async function tryPair(pair: Example) {
+    setView("detect");
+    opener = null;
+    closeLibrary();
+    loadPair(pair.ai, pair.human, true);
+    // Coming from the map, DetectView mounts with this change — wait for it
+    // rather than reaching for a box that is not on the page yet.
+    await tick();
+    detect?.focusFirstText();
   }
 
   $effect(() => {
@@ -103,14 +123,14 @@
 
   <main>
     {#if view === "detect"}
-      <DetectView onOpenLibrary={openLibrary} suspended={libraryOpen} />
+      <DetectView bind:this={detect} onOpenLibrary={openLibrary} suspended={libraryOpen} />
     {:else}
       <MapView onOpenLibrary={openLibrary} />
     {/if}
   </main>
 </div>
 
-<LibrarySheet open={libraryOpen} onClose={closeLibrary} />
+<LibrarySheet open={libraryOpen} onClose={closeLibrary} onTryPair={tryPair} />
 <Toasts />
 
 <style>

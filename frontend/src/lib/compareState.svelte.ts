@@ -1,6 +1,6 @@
 import { api } from "./api";
 import { toErrorState, type ErrorState } from "./errors";
-import { addPair, isCalibrated } from "./library.svelte";
+import { addPair, isCalibrated, library } from "./library.svelte";
 import { toast } from "./toast";
 import type { CompareResult, TextScore } from "./types";
 
@@ -33,7 +33,6 @@ export const compareState = $state({
   /** Which of the two compared texts "Save as pair" files as the human one. */
   saveHuman: "second" as "first" | "second",
   savingPair: false,
-  savedPair: false,
 });
 
 const isPair = () => compareState.mode === "pair";
@@ -63,10 +62,25 @@ export function clearResults(): void {
   compareState.result = null;
   compareState.single = null;
   compareState.lastScoredSingle = null;
-  compareState.savedPair = false;
   compareState.error = null;
   compareState.stale = false;
   compareState.scoring = false;
+}
+
+/**
+ * Whether the two scored texts are already a training pair, in either
+ * orientation. Derived from the library rather than remembered, so it is true
+ * both after saving and for a pair opened from the sheet, and false again the
+ * moment either text is edited — POST /api/examples does not dedupe, so the
+ * save offer must never invite a second copy of a pair that already exists.
+ * Keyed to lastScored, like every other part of the showing result.
+ */
+export function alreadySaved(): boolean {
+  const last = compareState.lastScored;
+  if (!last) return false;
+  return library.examples.some(
+    (e) => (e.ai === last.a && e.human === last.b) || (e.ai === last.b && e.human === last.a),
+  );
 }
 
 /** Typing only marks the result stale; scoring runs on Ctrl+Enter, paste into
@@ -107,7 +121,6 @@ async function run(): Promise<void> {
       if (id !== requestId) return;
       compareState.lastScored = { a, b };
       compareState.result = r;
-      compareState.savedPair = false;
       compareState.saveHuman = r.gap >= 0 ? "second" : "first";
     } else {
       const r = await api.score(a);
@@ -168,6 +181,23 @@ export function swap(): void {
   queueRun();
 }
 
+/**
+ * Put a training pair into the boxes and score it — the one path for both
+ * "Try an example" and a pair sent over from the library sheet. `compare`
+ * forces two-text mode (the sheet's pairs are two texts, so showing one of
+ * them would be a lie); otherwise the current mode decides, and single mode
+ * takes only the first text.
+ */
+export function loadPair(first: string, second: string, compare = false): void {
+  // Set the mode directly rather than via setMode: that would score the texts
+  // still in the boxes, and the run below would immediately supersede it.
+  if (compare) compareState.mode = "pair";
+  compareState.first = first;
+  if (isPair()) compareState.second = second;
+  compareState.error = null;
+  queueRun();
+}
+
 /** File the compared texts as a training pair, human side per saveHuman. */
 export async function savePair(): Promise<void> {
   if (compareState.savingPair || !compareState.result) return;
@@ -176,7 +206,6 @@ export async function savePair(): Promise<void> {
   compareState.savingPair = true;
   try {
     await addPair({ ai, human });
-    compareState.savedPair = true;
     toast("success", "Saved as a training pair.");
   } catch (err) {
     toast("error", toErrorState(err, "Could not save the pair.").message);

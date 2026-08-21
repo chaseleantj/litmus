@@ -80,14 +80,35 @@
   function grow() {
     const el = box;
     if (!el) return;
+    // Collapsing to 0 for the measurement momentarily shrinks the .box's
+    // content, and the browser clamps/re-anchors the box's scroll — which
+    // reads as the view snapping around while typing. Pin it across the
+    // measurement.
+    const scroller = el.parentElement;
+    const scrollTop = scroller?.scrollTop ?? 0;
     el.style.height = "0";
     el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+    if (scroller) scroller.scrollTop = scrollTop;
   }
 
   $effect(() => {
     value;
     grow();
   });
+
+  /**
+   * Put the caret in this box and read it from the top. The .box is the
+   * scroller, not the textarea (see grow), so plain focus() on a box that was
+   * just filled leaves the caret at the end and the view parked down there.
+   */
+  export function focusFromTop() {
+    const el = box;
+    if (!el) return;
+    el.setSelectionRange(0, 0);
+    el.focus();
+    const scroller = el.parentElement;
+    if (scroller) scroller.scrollTop = 0;
+  }
 
   // A width change (mode toggle, window resize, dragging the box's handle)
   // rewraps the lines, which changes the height the text needs.

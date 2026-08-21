@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import { DownloadSimple, PencilSimple, Plus, Trash, UploadSimple, X } from "phosphor-svelte";
+  import { DownloadSimple, PencilSimple, Play, Plus, Trash, UploadSimple, X } from "phosphor-svelte";
   import { toErrorState } from "./errors";
   import {
     addPair,
@@ -9,19 +9,22 @@
     library,
     loadLibrary,
     MIN_PAIRS,
+    newestFirst,
     updatePair,
   } from "./library.svelte";
   import LibraryHistogram from "./LibraryHistogram.svelte";
   import PairEditor from "./PairEditor.svelte";
   import { toast } from "./toast";
-  import type { PairInput } from "./types";
+  import type { Example, PairInput } from "./types";
 
   interface Props {
     open: boolean;
     onClose: () => void;
+    /** Send a pair to the detector: the shell closes the sheet and shows it. */
+    onTryPair: (pair: Example) => void;
   }
 
-  let { open, onClose }: Props = $props();
+  let { open, onClose, onTryPair }: Props = $props();
 
   // The sheet stays mounted while closed, so drafts, scroll position and
   // an in-progress edit survive closing and reopening it.
@@ -238,7 +241,11 @@
     }
   }
 
-  /** The same shape the import accepts, built from the list already on screen. */
+  /**
+   * The same shape the import accepts, in the library's own oldest-first order
+   * — the order the seed examples.json is written in. The list above shows
+   * newest first, which is a reading order, not the file's.
+   */
   function doExport() {
     const pairs = library.examples.map(({ ai, human }) => ({ ai, human }));
     const url = URL.createObjectURL(
@@ -261,6 +268,7 @@
     return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   }
 
+  const pairs = $derived(newestFirst());
   const count = $derived(library.examples.length);
   const countText = $derived.by(() => {
     if (library.loading) return "Loading…";
@@ -390,7 +398,7 @@
         </div>
       {:else}
         <ul class="pairs">
-          {#each library.examples as ex (ex.id)}
+          {#each pairs as ex (ex.id)}
             <li id="pair-{ex.id}">
               {#if editingId === ex.id}
                 <PairEditor
@@ -444,6 +452,14 @@
                       </button>
                     {:else}
                       <div class="row-actions">
+                        <button
+                          class="icon-btn"
+                          aria-label="Try this pair in the detector"
+                          title="Try in detector"
+                          onclick={() => onTryPair(ex)}
+                        >
+                          <Play size={15} />
+                        </button>
                         <button
                           class="icon-btn"
                           aria-label="Edit pair"
