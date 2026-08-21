@@ -490,17 +490,18 @@
 </div>
 
 <style>
-  /* The library is the family's edge sheet: a full-height floating panel
-     that slides in from the right, inset from the window on every side. */
+  /* The library is a full-height floating panel centred over the app, inset
+     from the window on every side. It rises into place rather than sliding in
+     from an edge — nothing about it belongs to one side of the screen. */
   .overlay {
     position: fixed;
     inset: 0;
     z-index: 50;
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     padding: 10px;
     visibility: hidden;
-    transition: visibility 0s 420ms;
+    transition: visibility 0s 260ms;
   }
 
   .overlay.open {
@@ -528,12 +529,16 @@
     background: var(--bg);
     border-radius: 22px;
     box-shadow: var(--shadow-sheet);
-    transform: translateX(calc(100% + 20px));
-    transition: transform 420ms var(--ease-sheet);
+    transform: translateY(14px);
+    opacity: 0;
+    transition:
+      transform 260ms var(--ease-sheet),
+      opacity 260ms var(--ease-out);
   }
 
   .overlay.open .sheet {
-    transform: translateX(0);
+    transform: translateY(0);
+    opacity: 1;
   }
 
   .sheet:focus-visible {
