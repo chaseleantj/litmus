@@ -24,4 +24,4 @@ python run.py
 
 run.py builds the frontend if needed, then serves everything on http://127.0.0.1:8000. Add --no-browser to run headless, or --dev for Vite on :5173 with hot reload.
 
-From backend/, run uvicorn, then pytest in another terminal. From frontend/, run npm install, then npm run dev. For deploying it somewhere, see DEPLOY.md.
+From backend/, run uvicorn, then pytest in another terminal. From frontend/, run npm install, then npm run dev.
