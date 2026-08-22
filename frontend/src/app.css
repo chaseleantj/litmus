@@ -8,7 +8,7 @@
      are the same color at low alpha, and must stay that way. */
   --ink-hsl: 240 5% 8%;
 
-  --bg: #f7f7f5;
+  --bg: #fcfcfb;
   --surface: #ffffff;
   --surface-muted: #f0f0ed;
   --hairline: #e8e8e4;
